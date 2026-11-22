@@ -341,15 +341,18 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
         } else {
             LazyColumn(Modifier.weight(1f,fill=true)) {
                 items(shown,key={it.id}) { item ->
-                    Row(Modifier.fillMaxWidth().clickable{open(item)}.padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Text(">",color=Green,fontFamily=FontFamily.Monospace)
-                        Spacer(Modifier.width(8.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(item.name,color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace,maxLines=1)
-                            Text(item.mime,color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+                    Column(Modifier.fillMaxWidth().padding(vertical=7.dp)) {
+                        Row(Modifier.fillMaxWidth().clickable{open(item)},verticalAlignment=Alignment.CenterVertically) {
+                            Text("-rw-------",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+                            Spacer(Modifier.width(7.dp))
+                            Text(item.name,color=Color(0xFFE1F8E7),fontSize=10.sp,fontFamily=FontFamily.Monospace,maxLines=1,modifier=Modifier.weight(1f))
+                            Text("[ OPEN ]",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)
                         }
-                        Text("[ OPEN ]",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)
-                        IconButton(onClick={delete(item)}){Icon(Icons.Outlined.DeleteOutline,null,tint=TerminalAmber)}
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text("│  MIME: "+item.mime,color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.weight(1f))
+                            Text("[ DELETE ]",Modifier.clickable{delete(item)}.padding(horizontal=5.dp,vertical=3.dp),color=TerminalAmber,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+                        }
+                        Text("└─ ID: "+item.id.take(18)+"…",color=Color(0xFF527A60),fontSize=7.sp,fontFamily=FontFamily.Monospace)
                     }
                     HorizontalDivider(color=TerminalLineColor)
                 }
@@ -414,7 +417,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
                                 Text(address,color=Color.White,fontFamily=FontFamily.Monospace,fontSize=11.sp)
                                 Text(if(address==current)"CURRENT NODE / ACTIVE" else "TRUSTED ADDRESS",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)
                             }
-                            TextButton(onClick={remove(address)}){Text("[ REVOKE ]",color=TerminalAmber,fontFamily=FontFamily.Monospace,fontSize=9.sp)}
+                            Text("[ REVOKE ]",Modifier.clickable{remove(address)}.padding(6.dp),color=TerminalAmber,fontFamily=FontFamily.Monospace,fontSize=9.sp)
                         }
                         HorizontalDivider(color=TerminalLineColor)
                     }
