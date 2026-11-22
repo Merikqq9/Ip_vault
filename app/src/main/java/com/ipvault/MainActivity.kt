@@ -315,8 +315,12 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
    TerminalLine(" [●] CORE ................. ONLINE",Green);TerminalLine(" [●] AES-256-GCM .......... READY",Green);TerminalLine(" [●] ANDROID KEYSTORE ..... SEALED",Green);TerminalLine(" [●] NETWORK .............. "+ip,Color(0xFFB8D8C0));TerminalLine(" [●] LOCAL VAULT .......... ENCRYPTED",Green);TerminalLine(" ["+(if(tick>.5f)"●" else " ")+"] SESSION .............. ACTIVE",Green)
   }
   Spacer(Modifier.height(8.dp))
-  TerminalPanel("NETWORK TOPOLOGY // LOCAL NODE"){
-   TerminalLine("                 .──────────────.",Color(0xFF69B987));TerminalLine("                 │  IP_VAULT    │",Green);TerminalLine("                 │  127.0.0.1   │",Green);TerminalLine("                 '──────┬───────'",Color(0xFF69B987));TerminalLine("          ┌─────────────┼─────────────┐",Muted);TerminalLine("          │             │             │",Muted);TerminalLine("      [CIPHER]       [FIREWALL]     [STORAGE]",Green);TerminalLine("          │             │             │",Muted);TerminalLine("       AES-256       IP FILTER      LOCAL FS",Color(0xFF9DC9AA)
+  TerminalPanel("NOC WALL // NETWORK TOPOLOGY"){
+   TerminalLine("              .-------------------.",Color(0xFF69B987));TerminalLine("              |   IP_VAULT NODE   |",Green);TerminalLine("              |   127.0.0.1       |",Green);TerminalLine("              '---------+---------'",Color(0xFF69B987));TerminalLine("          .-------------+-------------.",Muted);TerminalLine("          |             |             |",Muted);TerminalLine("      [CIPHER]       [FIREWALL]     [STORAGE]",Green);TerminalLine("          |             |             |",Muted);TerminalLine("       AES-256       IP FILTER      LOCAL FS",Color(0xFF9DC9AA)
+  }
+  Spacer(Modifier.height(8.dp))
+  TerminalPanel("NIGHT SHIFT // EVENT STREAM"){
+   TerminalLine("00:00:01  SYS   session handshake ........ OK",Color(0xFFB8D8C0));TerminalLine("00:00:02  CRYP  vault cipher .............. READY",Color(0xFFB8D8C0));TerminalLine("00:00:03  NET   trusted route ............. ACTIVE",Color(0xFFB8D8C0));TerminalLine("00:00:04  AUTH  access policy ............. ENFORCED",Green);TerminalLine("00:00:05  LOG   local audit ............... SEALED",Color(0xFFB8D8C0))
   }
   Spacer(Modifier.height(8.dp));Text("root@ipvault:~$ vault --list-sectors",color=Color(0xFFB8D8C0),fontSize=9.sp,fontFamily=FontFamily.Monospace)
   TerminalMenuRow("ALL ENCRYPTED OBJECTS","01","vault://files",all);TerminalMenuRow("IMAGE SECTOR","02","vault://media/images",images);TerminalMenuRow("VIDEO SECTOR","03","vault://media/video",videos);TerminalMenuRow("AUDIO SECTOR","04","vault://media/audio",audio);TerminalMenuRow("DOCUMENTS / OTHER","05","vault://data/misc",other)
