@@ -319,6 +319,23 @@ private fun asciiEarthFrame(rotation:Float):String{
 
 @Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=VaultFont);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
 @Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=VaultFont);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
+@Composable private fun PixelSettingsIcon(){
+    Canvas(Modifier.size(25.dp)) {
+        val cell = size.minDimension / 8f
+        val blocks = listOf(
+            2 to 0, 3 to 0, 4 to 0, 5 to 0,
+            0 to 2, 1 to 2, 6 to 2, 7 to 2,
+            0 to 3, 7 to 3, 0 to 4, 7 to 4,
+            1 to 5, 6 to 5, 2 to 6, 5 to 6,
+            3 to 7, 4 to 7
+        )
+        blocks.forEach { (x,y) ->
+            drawRect(Green, Offset(x * cell, y * cell), androidx.compose.ui.geometry.Size(cell * 1.05f, cell * 1.05f))
+        }
+        drawRect(Green, Offset(2.5f * cell, 2.5f * cell), androidx.compose.ui.geometry.Size(3f * cell, 3f * cell))
+        drawRect(Black, Offset(3.5f * cell, 3.5f * cell), androidx.compose.ui.geometry.Size(cell, cell))
+    }
+}
 @Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
     var activeRow by remember { mutableIntStateOf(-1) }
     val rowBounds = remember { mutableStateListOf<Rect>() }
@@ -336,7 +353,7 @@ private fun asciiEarthFrame(rotation:Float):String{
                 )
             }
     ){
-        Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=VaultFont,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}}
+        Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=VaultFont,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){PixelSettingsIcon()}}
         Spacer(Modifier.height(32.dp))
         Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp)
         Spacer(Modifier.height(8.dp))
