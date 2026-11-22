@@ -551,19 +551,25 @@ private fun WhitelistScreen(
                 visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
             TextButton(onClick={textMode=false}){Text("123",color=Green,fontFamily=VaultFont)}
         }else{
-            OutlinedTextField(
-                value=if(activeField=="password")"• ".repeat(password.length).trim() else "",
-                onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth().clickable{activeField="password"},
-                label={Text(tr("Backup password"))},singleLine=true,colors=vaultFieldColors(),
-                textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
-            )
+            Box(Modifier.fillMaxWidth()){
+                OutlinedTextField(
+                    value=if(activeField=="password")"• ".repeat(password.length).trim() else "",
+                    onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth(),
+                    label={Text(tr("Backup password"))},singleLine=true,colors=vaultFieldColors(),
+                    textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+                )
+                Box(Modifier.matchParentSize().clickable{activeField="password"})
+            }
             Spacer(Modifier.height(7.dp))
-            OutlinedTextField(
-                value=if(activeField=="confirm")"• ".repeat(confirm.length).trim() else "",
-                onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth().clickable{activeField="confirm"},
-                label={Text(tr("Repeat new password"))},singleLine=true,colors=vaultFieldColors(),
-                textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
-            )
+            Box(Modifier.fillMaxWidth()){
+                OutlinedTextField(
+                    value=if(activeField=="confirm")"• ".repeat(confirm.length).trim() else "",
+                    onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth(),
+                    label={Text(tr("Repeat new password"))},singleLine=true,colors=vaultFieldColors(),
+                    textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+                )
+                Box(Modifier.matchParentSize().clickable{activeField="confirm"})
+            }
             Spacer(Modifier.height(12.dp))
             val keypadRows=listOf(listOf("1","2","3"),listOf("4","5","6"),listOf("7","8","9"))
             Column(Modifier.fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(7.dp)){
