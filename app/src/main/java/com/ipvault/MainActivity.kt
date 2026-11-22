@@ -18,7 +18,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -28,6 +28,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.*
@@ -264,7 +267,49 @@ private fun asciiEarthFrame(rotation:Float):String{
 
 @Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
 @Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
-@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=28.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}};Spacer(Modifier.height(32.dp));Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(14.dp));Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);AnimatedIpText(ip);Spacer(Modifier.height(30.dp));Text(tr("MY VAULT"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);VaultMenuRow(tr("ALL FILES"),Icons.Outlined.Folder,all);VaultMenuRow(tr("PHOTOS"),Icons.Outlined.Image,images);VaultMenuRow(tr("VIDEO"),Icons.Outlined.Videocam,videos);VaultMenuRow(tr("AUDIO"),Icons.Outlined.Headphones,audio);VaultMenuRow(tr("DOCUMENTS & OTHER"),Icons.Outlined.Description,other)}}
+@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
+    var activeRow by remember { mutableIntStateOf(-1) }
+    val rowBounds = remember { mutableStateListOf<Rect>() }
+    Column(
+        Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=28.dp)
+            .pointerInput(Unit) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { point -> activeRow = rowBounds.indexOfFirst { it.contains(point) } },
+                    onDrag = { change, _ ->
+                        activeRow = rowBounds.indexOfFirst { it.contains(change.position) }
+                        change.consume()
+                    },
+                    onDragEnd = { activeRow = -1 },
+                    onDragCancel = { activeRow = -1 }
+                )
+            }
+    ){
+        Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}}
+        Spacer(Modifier.height(32.dp))
+        Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp)
+        Spacer(Modifier.height(8.dp))
+        Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace)
+        Spacer(Modifier.height(14.dp))
+        Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp)
+        AnimatedIpText(ip)
+        Spacer(Modifier.height(30.dp))
+        Text(tr("MY VAULT"),color=Muted,fontSize=10.sp,letterSpacing=2.sp)
+        val actions = listOf(all,images,videos,audio,other)
+        val labels = listOf("ALL FILES","PHOTOS","VIDEO","AUDIO","DOCUMENTS & OTHER")
+        val icons = listOf(Icons.Outlined.Folder,Icons.Outlined.Image,Icons.Outlined.Videocam,Icons.Outlined.Headphones,Icons.Outlined.Description)
+        labels.forEachIndexed { index, label ->
+            VaultMenuRow(
+                label=tr(label), icon=icons[index], click=actions[index], bump=activeRow==index,
+                onBounds={ rect ->
+                    if(rowBounds.size<=index) {
+                        while(rowBounds.size<=index) rowBounds.add(Rect.Zero)
+                    }
+                    rowBounds[index]=rect
+                }
+            )
+        }
+    }
+}
 
 @Composable private fun AnimatedIpText(ip:String){
     var count by remember(ip){mutableIntStateOf(0)}
@@ -275,40 +320,39 @@ private fun asciiEarthFrame(rotation:Float):String{
     Text(ip.take(count),color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace)
 }
 
-@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){
+@Composable private fun VaultMenuRow(
+    label:String,
+    icon:androidx.compose.ui.graphics.vector.ImageVector,
+    click:()->Unit,
+    bump:Boolean=false,
+    onBounds:(Rect)->Unit={}
+){
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    var dragging by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
-        targetValue = if (dragging) 1.045f else if (pressed) 0.975f else 1f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        targetValue = if (bump) 1.045f else if (pressed) 0.975f else 1f,
+        animationSpec = spring(dampingRatio = 0.48f, stiffness = 360f),
         label = "vaultMenuScale"
     )
     val lift by animateFloatAsState(
-        targetValue = if (dragging) 12f else if (pressed) 2f else 0f,
-        animationSpec = spring(dampingRatio = 0.62f, stiffness = 380f),
+        targetValue = if (bump) 10f else if (pressed) 2f else 0f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 340f),
         label = "vaultMenuLift"
+    )
+    val offset by animateFloatAsState(
+        targetValue = if (bump) (-7f) else 0f,
+        animationSpec = spring(dampingRatio = 0.42f, stiffness = 300f),
+        label = "vaultMenuBounce"
     )
     Row(
         Modifier.fillMaxWidth().padding(vertical=5.dp)
-            .graphicsLayer { translationY = dragOffset; scaleX = scale; scaleY = scale }
+            .onGloballyPositioned { onBounds(it.boundsInParent()) }
+            .graphicsLayer { translationY=offset; scaleX=scale; scaleY=scale }
             .shadow(lift.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .background(if (dragging) Color(0xFF14231A) else Color(0xFF0D140F))
-            .border(1.dp, if (dragging) Green.copy(alpha=.8f) else Color(0xFF203629), RoundedCornerShape(12.dp))
+            .background(if (bump) Color(0xFF14231A) else Color(0xFF0D140F))
+            .border(1.dp, if (bump) Green.copy(alpha=.8f) else Color(0xFF203629), RoundedCornerShape(12.dp))
             .clickable(interactionSource=interaction, indication=null, onClick=click)
-            .pointerInput(Unit) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { dragging = true },
-                    onDrag = { change, amount ->
-                        change.consume()
-                        dragOffset = (dragOffset + amount.y).coerceIn(-36f, 72f)
-                    },
-                    onDragEnd = { dragging = false; dragOffset = 0f },
-                    onDragCancel = { dragging = false; dragOffset = 0f }
-                )
-            }
             .padding(horizontal=14.dp,vertical=15.dp),
         verticalAlignment=Alignment.CenterVertically
     ){
