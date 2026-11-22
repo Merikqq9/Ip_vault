@@ -79,7 +79,7 @@ IP VAULT — развивающийся проект. Проверяйте по�
 
 ## 👨‍💻 Автор
 
-**Merik**
+**Merikqq9**
 
 Проект: [github.com/Merikqq9/Ip_vault](https://github.com/Merikqq9/Ip_vault)
 
