@@ -6,6 +6,8 @@ import android.security.keystore.KeyProperties
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.CipherInputStream
@@ -19,6 +21,7 @@ import javax.crypto.spec.GCMParameterSpec
  * Encrypted files contain a 12-byte IV followed by the authenticated ciphertext.
  */
 class VaultCrypto(private val context: Context) {
+    private val ioBufferSize = 262144
     private val alias = "ip_vault_file_key_v1"
     private val vaultDir = File(context.filesDir, "vault_encrypted").apply { mkdirs() }
 
@@ -45,10 +48,10 @@ class VaultCrypto(private val context: Context) {
         val target = File(vaultDir, safeName)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
-        FileOutputStream(target).use { fileOut ->
+        BufferedOutputStream(FileOutputStream(target), ioBufferSize).use { fileOut ->
             fileOut.write(cipher.iv)
             CipherOutputStream(fileOut, cipher).use { encryptedOut ->
-                input.use { source -> source.copyTo(encryptedOut) }
+                BufferedInputStream(input, ioBufferSize).use { source -> source.copyTo(encryptedOut, ioBufferSize) }
             }
         }
         return target
@@ -56,7 +59,7 @@ class VaultCrypto(private val context: Context) {
 
     /** Decrypts an encrypted vault file into the caller-provided output stream. */
     fun decrypt(encryptedFile: File, output: java.io.OutputStream) {
-        FileInputStream(encryptedFile).use { fileIn ->
+        BufferedInputStream(FileInputStream(encryptedFile), ioBufferSize).use { fileIn ->
             val iv = ByteArray(12)
             var offset = 0
             while (offset < iv.size) {
@@ -67,7 +70,7 @@ class VaultCrypto(private val context: Context) {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, iv))
             CipherInputStream(fileIn, cipher).use { decryptedIn ->
-                decryptedIn.copyTo(output)
+                BufferedOutputStream(output, ioBufferSize).use { bufferedOut -> decryptedIn.copyTo(bufferedOut, ioBufferSize); bufferedOut.flush() }
             }
         }
     }
