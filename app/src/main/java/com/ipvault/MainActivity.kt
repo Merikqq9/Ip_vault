@@ -220,12 +220,11 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 }
 @Composable private fun TerminalHeader(title:String,path:String="SYS://IP_VAULT") {
  Column(Modifier.fillMaxWidth()){
-  Text("╔══════════════════════════════════════════════╗",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,maxLines=1)
-  Text("║ ▄▀█ █▀█   I P _ V A U L T   ▒▒ SECURE NODE  ║",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,maxLines=1,fontWeight=FontWeight.Bold)
-  Text("║ █▀█ █▀▄   ENCRYPTED STORAGE // NODE-01       ║",color=Color(0xFF9DC9AA),fontSize=8.sp,fontFamily=FontFamily.Monospace,maxLines=1)
-  Text("╚══════════════════════════════════════════════╝",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,maxLines=1)
-  Text("● LINK: ENCRYPTED  ● SESSION: ACTIVE  ● "+path,color=Muted,fontSize=7.sp,fontFamily=FontFamily.Monospace,maxLines=1)
-  Text("┌─ "+title.uppercase()+" "+"─".repeat((34-title.length).coerceAtLeast(2)),color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
+  Text("IP_VAULT // SECURE NODE",color=Green,fontSize=15.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+  Text(title.uppercase(),color=Color(0xFFD8F5DF),fontSize=10.sp,fontFamily=FontFamily.Monospace)
+  Text("LINK: ENCRYPTED  •  SESSION: ACTIVE",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  Text(path,color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  HorizontalDivider(color=TerminalLineColor)
  }
 }
 @Composable private fun TerminalFooter(text:String="END OF SESSION") {
