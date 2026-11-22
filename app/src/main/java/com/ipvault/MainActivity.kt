@@ -40,6 +40,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -47,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -143,6 +146,30 @@ private fun tr(value:String):String =
     if (activeVaultLanguage == "ru") RussianTranslations[value] ?: value else value
 
 private val LanguageKey=androidx.datastore.preferences.core.stringPreferencesKey("app_language")
+
+private val VaultFont = FontFamily(Font(R.font.monocraft))
+private fun minecraftTypography(): Typography {
+    val base = Typography()
+    fun pixel(style: TextStyle) = style.copy(fontFamily = VaultFont)
+    return base.copy(
+        displayLarge = pixel(base.displayLarge),
+        displayMedium = pixel(base.displayMedium),
+        displaySmall = pixel(base.displaySmall),
+        headlineLarge = pixel(base.headlineLarge),
+        headlineMedium = pixel(base.headlineMedium),
+        headlineSmall = pixel(base.headlineSmall),
+        titleLarge = pixel(base.titleLarge),
+        titleMedium = pixel(base.titleMedium),
+        titleSmall = pixel(base.titleSmall),
+        bodyLarge = pixel(base.bodyLarge),
+        bodyMedium = pixel(base.bodyMedium),
+        bodySmall = pixel(base.bodySmall),
+        labelLarge = pixel(base.labelLarge),
+        labelMedium = pixel(base.labelMedium),
+        labelSmall = pixel(base.labelSmall)
+    )
+}
+
 private val Green=Color(0xFF20E879); private val Black=Color(0xFF050805); private val Muted=Color(0xFF819187)
 private val AllowedIps=stringSetPreferencesKey("allowed_ips"); private val VaultItems=stringSetPreferencesKey("vault_items")
 private val EmergencySalt=androidx.datastore.preferences.core.stringPreferencesKey("emergency_salt")
@@ -182,7 +209,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
   context.vaultStore.edit{it[VaultItems]=(it[VaultItems]?:emptySet())+item.encode()};message=tr("FILE ENCRYPTED AND SAVED")
  }catch(e:Exception){message=tr("IMPORT ERROR: ")+(e.localizedMessage?:"unknown")}}}
- MaterialTheme(colorScheme=darkColorScheme(primary=Green,background=Black,surface=Color(0xFF0D140F),onSurface=Color.White)){Surface(Modifier.fillMaxSize(),color=Black){
+ MaterialTheme(colorScheme=darkColorScheme(primary=Green,background=Black,surface=Color(0xFF0D140F),onSurface=Color.White), typography=minecraftTypography()){Surface(Modifier.fillMaxSize(),color=Black){
  when{
  checking->CenterStatus("IP VAULT",tr("CHECKING NETWORK"))
  firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false;setupEmergency=true}}
@@ -211,16 +238,16 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     }
     Box(Modifier.fillMaxSize().background(Black),contentAlignment=Alignment.Center){
         Column(horizontalAlignment=Alignment.CenterHorizontally){
-            Text(greeting.take(visibleCount),color=Green,fontSize=22.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Medium,letterSpacing=0.5.sp)
+            Text(greeting.take(visibleCount),color=Green,fontSize=22.sp,fontFamily=VaultFont,fontWeight=FontWeight.Medium,letterSpacing=0.5.sp)
             Spacer(Modifier.height(12.dp))
-            Text("IP VAULT  •  SECURE LOCAL STORAGE",color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+            Text("IP VAULT  •  SECURE LOCAL STORAGE",color=Muted,fontSize=10.sp,fontFamily=VaultFont,letterSpacing=1.sp)
         }
     }
 }
 @Composable private fun AsciiEarth(){
     var frame by remember { mutableStateOf(0) }
     LaunchedEffect(Unit){while(true){frame=(frame+1)%32;delay(115)}}
-    Text(text=asciiEarthFrame(frame*0.19634954f),color=Green,fontFamily=FontFamily.Monospace,fontSize=7.sp,lineHeight=7.sp)
+    Text(text=asciiEarthFrame(frame*0.19634954f),color=Green,fontFamily=VaultFont,fontSize=7.sp,lineHeight=7.sp)
 }
 private fun asciiEarthFrame(rotation:Float):String{
     val rows=13;val cols=21
@@ -255,7 +282,7 @@ private fun asciiEarthFrame(rotation:Float):String{
     Column(Modifier.width(142.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF0D140F)).border(1.dp,Color(0xFF203629),RoundedCornerShape(10.dp)).padding(10.dp)){
         Text(tr("DEVICE STORAGE"),color=Muted,fontSize=8.sp,letterSpacing=1.sp)
         Spacer(Modifier.height(5.dp))
-        Text("${format(used)} / ${format(total)}",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+        Text("${format(used)} / ${format(total)}",color=Color.White,fontSize=11.sp,fontFamily=VaultFont)
         Spacer(Modifier.height(6.dp))
         Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF26352B))){
             Box(Modifier.fillMaxWidth(fraction.coerceIn(0f,1f)).fillMaxHeight().background(Green))
@@ -265,8 +292,8 @@ private fun asciiEarthFrame(rotation:Float):String{
     }
 }
 
-@Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
-@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
+@Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=VaultFont);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
+@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=VaultFont);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
 @Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
     var activeRow by remember { mutableIntStateOf(-1) }
     val rowBounds = remember { mutableStateListOf<Rect>() }
@@ -284,11 +311,11 @@ private fun asciiEarthFrame(rotation:Float):String{
                 )
             }
     ){
-        Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}}
+        Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=VaultFont,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}}
         Spacer(Modifier.height(32.dp))
         Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp)
         Spacer(Modifier.height(8.dp))
-        Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace)
+        Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=VaultFont)
         Spacer(Modifier.height(14.dp))
         Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp)
         AnimatedIpText(ip)
@@ -317,7 +344,7 @@ private fun asciiEarthFrame(rotation:Float):String{
         count=0
         for(i in 1..ip.length){count=i;delay(115)}
     }
-    Text(ip.take(count),color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace)
+    Text(ip.take(count),color=Color.White,fontSize=17.sp,fontFamily=VaultFont)
 }
 
 @Composable private fun VaultMenuRow(
@@ -369,7 +396,7 @@ private fun asciiEarthFrame(rotation:Float):String{
     Column(Modifier.fillMaxSize().padding(start=20.dp,end=20.dp,top=52.dp,bottom=20.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,null,tint=Green)}
-            Text(tr(title),color=Green,fontSize=20.sp,fontFamily=FontFamily.Monospace)
+            Text(tr(title),color=Green,fontSize=20.sp,fontFamily=VaultFont)
             Spacer(Modifier.weight(1f))
             IconButton(onClick=add){Icon(Icons.Outlined.Add,null,tint=Green)}
         }
@@ -406,7 +433,7 @@ private fun WhitelistScreen(
                 Icon(Icons.Outlined.ArrowBack, null, tint = Green)
             }
             Text(when(section) { "password" -> tr("BACKUP PASSWORD"); "ips" -> tr("IP WHITELIST"); "language" -> tr("LANGUAGE"); else -> tr("SETTINGS") },
-                color = Green, fontSize = 20.sp, fontFamily = FontFamily.Monospace)
+                color = Green, fontSize = 20.sp, fontFamily = VaultFont)
         }
         Spacer(Modifier.height(24.dp))
         when(section) {
@@ -421,7 +448,7 @@ private fun WhitelistScreen(
                 Spacer(Modifier.height(14.dp))
                 Text(tr("AUTHOR"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
                 Spacer(Modifier.height(5.dp))
-                Text("Merik", color=Color.White, fontSize=14.sp, fontFamily=FontFamily.Monospace)
+                Text("Merik", color=Color.White, fontSize=14.sp, fontFamily=VaultFont)
             }
             "password" -> {
                 Text(tr("Confirm your current password before setting a new one."), color=Muted, fontSize=12.sp)
@@ -454,7 +481,7 @@ private fun WhitelistScreen(
                     items(ips.sorted()) { address ->
                         Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(address,color=Color.White,fontFamily=FontFamily.Monospace)
+                                Text(address,color=Color.White,fontFamily=VaultFont)
                                 Text(tr(if(address==current)"CURRENT IP" else "ALLOWED"),color=Green,fontSize=10.sp)
                             }
                             IconButton(onClick={remove(address)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}
@@ -472,7 +499,7 @@ private fun WhitelistScreen(
     var password by remember{mutableStateOf("")}
     var confirm by remember{mutableStateOf("")}
     Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
-        Text(tr("EMERGENCY ACCESS"),color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace)
+        Text(tr("EMERGENCY ACCESS"),color=Green,fontSize=23.sp,fontFamily=VaultFont)
         Spacer(Modifier.height(12.dp))
         Text(tr("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist."),color=Muted)
         Spacer(Modifier.height(18.dp))
@@ -488,7 +515,7 @@ private fun WhitelistScreen(
 @Composable private fun EmergencyPasswordEntryScreen(onCancel:()->Unit,onUnlock:(String)->Unit){
     var password by remember{mutableStateOf("")}
     Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
-        Text("EMERGENCY ACCESS",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace)
+        Text("EMERGENCY ACCESS",color=Green,fontSize=23.sp,fontFamily=VaultFont)
         Spacer(Modifier.height(12.dp))
         Text(tr("Enter your backup password to unlock IP VAULT."),color=Muted)
         Spacer(Modifier.height(18.dp))
@@ -519,9 +546,9 @@ private fun WhitelistScreen(
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal=24.dp),
             horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-            Text("IP VAULT",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace)
+            Text("IP VAULT",color=Green,fontSize=25.sp,fontFamily=VaultFont)
             Spacer(Modifier.height(12.dp))
-            Text(tr("ACCESS DENIED"),color=Color.White,fontSize=18.sp,fontFamily=FontFamily.Monospace)
+            Text(tr("ACCESS DENIED"),color=Color.White,fontSize=18.sp,fontFamily=VaultFont)
             Spacer(Modifier.height(8.dp))
             Text(tr("This IP address is not authorized."),color=Muted,fontSize=12.sp)
             Spacer(Modifier.height(24.dp))
