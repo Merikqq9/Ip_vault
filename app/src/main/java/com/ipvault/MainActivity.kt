@@ -138,7 +138,7 @@ private val RussianTranslations = mapOf(
     " SECONDS" to " СЕК.",
     "INCORRECT PASSWORD. ATTEMPT " to "НЕВЕРНЫЙ ПАРОЛЬ. ПОПЫТКА ",
     " OF 5" to " ИЗ 5",
-    "WELCOME TO IP VAULT" to "С ДОБРОМ В IP VAULT",
+    "WELCOME TO IP VAULT" to "ПРИВЕТСТВУЕМ В IP VAULT",
     "DEVICE STORAGE" to "ПАМЯТЬ УСТРОЙСТВА",
     "FREE" to "СВОБОДНО"
 )
