@@ -161,7 +161,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  val prefs by context.vaultStore.data.collectAsState(initial=androidx.datastore.preferences.core.emptyPreferences())
  var savedWhitelist by remember { mutableStateOf<Set<String>?>(null) };val whitelist=savedWhitelist ?: (prefs[AllowedIps]?:emptySet());val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
  var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)};var setupEmergency by rememberSaveable{mutableStateOf(false)};var emergencyUnlocked by rememberSaveable{mutableStateOf(false)};var showEmergencyPassword by rememberSaveable{mutableStateOf(false)}
- var page by rememberSaveable{mutableStateOf("home")};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
+ var bootComplete by rememberSaveable{mutableStateOf(false)};var page by rememberSaveable{mutableStateOf("home")};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(Unit){val storedPrefs=withContext(Dispatchers.IO){context.vaultStore.data.first()};val stored=storedPrefs[AllowedIps]?:emptySet();language=storedPrefs[LanguageKey]?: "en";activeVaultLanguage=language;savedWhitelist=stored;ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};firstRun=stored.isEmpty();setupEmergency=stored.isNotEmpty()&&storedPrefs[EmergencyHash]==null;checking=false}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)scope.launch{try{
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
@@ -172,6 +172,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  MatrixRainBackground(Modifier.fillMaxSize())
  Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
  when{
+ !bootComplete->TerminalBootScreen(language){bootComplete=true}
  checking->CenterStatus("IP VAULT",tr("CHECKING NETWORK"))
  firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false;setupEmergency=true}}
  setupEmergency&&ip!=null&&ip in whitelist->EmergencyPasswordSetupScreen{password->scope.launch{val record=withContext(Dispatchers.Default){createEmergencyRecord(password)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};setupEmergency=false}}
@@ -184,6 +185,81 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  }
  }
  }}
+}
+
+
+@Composable private fun TerminalBootScreen(language:String,onFinished:()->Unit) {
+    val lines = remember(language) {
+        if(language=="ru") listOf(
+            "> ДОБРО ПОЖАЛОВАТЬ, ОПЕРАТОР.",
+            "> ЗАПУСК IP_VAULT SECURE ENVIRONMENT...",
+            "> ИНИЦИАЛИЗАЦИЯ ЯДРА СИСТЕМЫ ........ OK",
+            "> ПРОВЕРКА ANDROID KEYSTORE .......... OK",
+            "> ЗАГРУЗКА AES-256-GCM ENGINE ........ OK",
+            "> ПРОВЕРКА ЛОКАЛЬНОГО ХРАНИЛИЩА ...... OK",
+            "> ЗАПУСК МОДУЛЯ FIREWALL ............. OK",
+            "> ПРОВЕРКА КОНФИГУРАЦИИ ДОСТУПА ...... OK",
+            "> ПОДГОТОВКА МОДУЛЯ АВТОРИЗАЦИИ ...... OK",
+            "> ВСЕ СИСТЕМЫ ГОТОВЫ."
+        ) else listOf(
+            "> HELLO, OPERATOR.",
+            "> INITIALIZING IP_VAULT SECURE ENVIRONMENT...",
+            "> SYSTEM KERNEL INITIALIZATION ........ OK",
+            "> ANDROID KEYSTORE INTERFACE .......... OK",
+            "> LOADING AES-256-GCM ENGINE .......... OK",
+            "> LOCAL VAULT INTEGRITY CHECK ......... OK",
+            "> STARTING FIREWALL MODULE ............ OK",
+            "> ACCESS CONFIGURATION CHECK .......... OK",
+            "> PREPARING AUTHENTICATION GATE ....... OK",
+            "> ALL SYSTEMS OPERATIONAL."
+        )
+    }
+    val printed = remember { mutableStateListOf<String>() }
+    var progress by remember { mutableIntStateOf(0) }
+    var cursorVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        while(true) { cursorVisible=!cursorVisible; delay(420) }
+    }
+    LaunchedEffect(lines) {
+        printed.clear()
+        lines.forEachIndexed { index, line ->
+            printed.add("")
+            for (character in line) {
+                printed[index] = printed[index] + character
+                delay(13)
+            }
+            progress = ((index+1)*100)/lines.size
+            delay(155)
+        }
+        delay(650)
+        onFinished()
+    }
+    Column(Modifier.fillMaxSize().padding(horizontal=19.dp, vertical=24.dp), verticalArrangement=Arrangement.Center) {
+        Text("╔══════════════════════════════════╗",color=Green,fontFamily=FontFamily.Monospace,fontSize=11.sp)
+        Text("║          I P _ V A U L T           ║",color=Green,fontFamily=FontFamily.Monospace,fontSize=13.sp,fontWeight=FontWeight.Bold)
+        Text("║       SECURE TERMINAL v1.0         ║",color=Muted,fontFamily=FontFamily.Monospace,fontSize=9.sp)
+        Text("╚══════════════════════════════════╝",color=Green,fontFamily=FontFamily.Monospace,fontSize=11.sp)
+        Spacer(Modifier.height(22.dp))
+        Text("BOOT SEQUENCE // AUTHENTICATED STARTUP",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+        Spacer(Modifier.height(12.dp))
+        Column(Modifier.fillMaxWidth().heightIn(min=230.dp).background(Color(0xCC030A05)).border(1.dp,TerminalLineColor).padding(12.dp),verticalArrangement=Arrangement.Bottom) {
+            printed.forEachIndexed { index, line ->
+                Text(line + if(index==printed.lastIndex && progress<100 && cursorVisible) " ▌" else "",color=if(index==0||index==printed.lastIndex)Green else Color(0xFFB5D8BE),fontSize=9.sp,fontFamily=FontFamily.Monospace,lineHeight=15.sp)
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Text("BOOT PROGRESS",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+            Spacer(Modifier.weight(1f))
+            Text("$progress%",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+        }
+        Spacer(Modifier.height(7.dp))
+        Row(Modifier.fillMaxWidth().height(9.dp).border(1.dp,Green).padding(1.dp),horizontalArrangement=Arrangement.Start) {
+            if(progress>0) Box(Modifier.fillMaxWidth(progress/100f).fillMaxHeight().background(Green))
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(if(progress<100) "EXECUTING STARTUP ROUTINES..." else "STARTUP COMPLETE // OPENING ACCESS GATE",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+    }
 }
 
 @Composable private fun MatrixRainBackground(modifier:Modifier=Modifier) {
