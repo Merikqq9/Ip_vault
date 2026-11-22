@@ -13,6 +13,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -268,7 +275,49 @@ private fun asciiEarthFrame(rotation:Float):String{
     Text(ip.take(count),color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace)
 }
 
-@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){Row(Modifier.fillMaxWidth().padding(vertical=5.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF0D140F)).border(1.dp,Color(0xFF203629),RoundedCornerShape(12.dp)).clickable(onClick=click).padding(horizontal=14.dp,vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=Green);Spacer(Modifier.width(14.dp));Text(label,color=Color.White,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=Muted)}}
+@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (dragging) 1.045f else if (pressed) 0.975f else 1f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        label = "vaultMenuScale"
+    )
+    val lift by animateFloatAsState(
+        targetValue = if (dragging) 12f else if (pressed) 2f else 0f,
+        animationSpec = spring(dampingRatio = 0.62f, stiffness = 380f),
+        label = "vaultMenuLift"
+    )
+    Row(
+        Modifier.fillMaxWidth().padding(vertical=5.dp)
+            .graphicsLayer { translationY = dragOffset; scaleX = scale; scaleY = scale }
+            .shadow(lift.dp, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (dragging) Color(0xFF14231A) else Color(0xFF0D140F))
+            .border(1.dp, if (dragging) Green.copy(alpha=.8f) else Color(0xFF203629), RoundedCornerShape(12.dp))
+            .clickable(interactionSource=interaction, indication=null, onClick=click)
+            .pointerInput(Unit) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { dragging = true },
+                    onDrag = { change, amount ->
+                        change.consume()
+                        dragOffset = (dragOffset + amount.y).coerceIn(-36f, 72f)
+                    },
+                    onDragEnd = { dragging = false; dragOffset = 0f },
+                    onDragCancel = { dragging = false; dragOffset = 0f }
+                )
+            }
+            .padding(horizontal=14.dp,vertical=15.dp),
+        verticalAlignment=Alignment.CenterVertically
+    ){
+        Icon(icon,null,tint=Green)
+        Spacer(Modifier.width(14.dp))
+        Text(label,color=Color.White,modifier=Modifier.weight(1f))
+        Icon(Icons.Outlined.ChevronRight,null,tint=Muted)
+    }
+}
 @Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit){
     BackHandler(onBack=back)
     val shown=items.filter{when(filter){"IMAGE"->it.mime.startsWith("image/");"VIDEO"->it.mime.startsWith("video/");"AUDIO"->it.mime.startsWith("audio/");"OTHER"->!(it.mime.startsWith("image/")||it.mime.startsWith("video/")||it.mime.startsWith("audio/"));else->true}}
