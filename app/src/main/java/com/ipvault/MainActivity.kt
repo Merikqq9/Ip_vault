@@ -81,7 +81,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     BackHandler(onBack=back)
     val shown=items.filter{when(filter){"IMAGE"->it.mime.startsWith("image/");"VIDEO"->it.mime.startsWith("video/");"AUDIO"->it.mime.startsWith("audio/");"OTHER"->!(it.mime.startsWith("image/")||it.mime.startsWith("video/")||it.mime.startsWith("audio/"));else->true}}
     val title=when(filter){"IMAGE"->"PHOTOS";"VIDEO"->"VIDEO";"AUDIO"->"AUDIO";"OTHER"->"OTHER FILES";else->"ALL FILES"}
-    Column(Modifier.fillMaxSize().padding(20.dp)){
+    Column(Modifier.fillMaxSize().padding(start=20.dp,end=20.dp,top=52.dp,bottom=20.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,null,tint=Green)}
             Text(title,color=Green,fontSize=20.sp,fontFamily=FontFamily.Monospace)
