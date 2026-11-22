@@ -11,13 +11,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
-import androidx.compose.animation.core.*
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import kotlinx.coroutines.delay
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -27,9 +21,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -39,7 +30,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -133,8 +123,6 @@ private fun tr(value:String):String =
 
 private val LanguageKey=androidx.datastore.preferences.core.stringPreferencesKey("app_language")
 private val Green=Color(0xFF20E879); private val Black=Color(0xFF050805); private val Muted=Color(0xFF819187)
-private val TerminalLineColor=Color(0xFF245A38)
-private val TerminalAmber=Color(0xFFFFB347)
 private val AllowedIps=stringSetPreferencesKey("allowed_ips"); private val VaultItems=stringSetPreferencesKey("vault_items")
 private val EmergencySalt=androidx.datastore.preferences.core.stringPreferencesKey("emergency_salt")
 private val EmergencyHash=androidx.datastore.preferences.core.stringPreferencesKey("emergency_hash")
@@ -167,18 +155,14 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  val prefs by context.vaultStore.data.collectAsState(initial=androidx.datastore.preferences.core.emptyPreferences())
  var savedWhitelist by remember { mutableStateOf<Set<String>?>(null) };val whitelist=savedWhitelist ?: (prefs[AllowedIps]?:emptySet());val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
  var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)};var setupEmergency by rememberSaveable{mutableStateOf(false)};var emergencyUnlocked by rememberSaveable{mutableStateOf(false)};var showEmergencyPassword by rememberSaveable{mutableStateOf(false)}
- var bootComplete by rememberSaveable{mutableStateOf(false)};var page by rememberSaveable{mutableStateOf("home")};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
+ var page by rememberSaveable{mutableStateOf("home")};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(Unit){val storedPrefs=withContext(Dispatchers.IO){context.vaultStore.data.first()};val stored=storedPrefs[AllowedIps]?:emptySet();language=storedPrefs[LanguageKey]?: "en";activeVaultLanguage=language;savedWhitelist=stored;ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};firstRun=stored.isEmpty();setupEmergency=stored.isNotEmpty()&&storedPrefs[EmergencyHash]==null;checking=false}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)scope.launch{try{
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
   context.vaultStore.edit{it[VaultItems]=(it[VaultItems]?:emptySet())+item.encode()};message=tr("FILE ENCRYPTED AND SAVED")
  }catch(e:Exception){message=tr("IMPORT ERROR: ")+(e.localizedMessage?:"unknown")}}}
  MaterialTheme(colorScheme=darkColorScheme(primary=Green,background=Black,surface=Color(0xFF0D140F),onSurface=Color.White)){Surface(Modifier.fillMaxSize(),color=Black){
- Box(Modifier.fillMaxSize()) {
- MatrixRainBackground(Modifier.fillMaxSize())
- Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
  when{
- !bootComplete->TerminalBootScreen(language){bootComplete=true}
  checking->CenterStatus("IP VAULT",tr("CHECKING NETWORK"))
  firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false;setupEmergency=true}}
  setupEmergency&&ip!=null&&ip in whitelist->EmergencyPasswordSetupScreen{password->scope.launch{val record=withContext(Dispatchers.Default){createEmergencyRecord(password)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};setupEmergency=false}}
@@ -187,343 +171,176 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val safeName=item.name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"),"_").ifBlank{"file"};val out=File(context.cacheDir,"open_"+UUID.randomUUID().toString()+"_"+safeName);out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);val resolvedMime=if(item.mime.isNotBlank()&&item.mime!="application/octet-stream")item.mime else android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(item.name.substringAfterLast('.', "").lowercase()) ?: if(item.mime.startsWith("audio/"))"audio/*" else "*/*";val viewIntent=Intent(Intent.ACTION_VIEW).setDataAndType(uri,resolvedMime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);viewIntent.clipData=android.content.ClipData.newUri(context.contentResolver,item.name,uri);context.startActivity(Intent.createChooser(viewIntent,"Open with"))}catch(e:Exception){message=tr("OPEN ERROR: ")+(e.localizedMessage?:tr("No app can open this file"))}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
  else->HomeScreen(ip?: "UNVERIFIED",{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"})
  }
- message?.let{AlertDialog(onDismissRequest={message=null},confirmButton={TextButton(onClick={message=null}){Text(tr("OK"),color=Green,fontFamily=FontFamily.Monospace)}},text={Text(it,color=Color.White,fontFamily=FontFamily.Monospace)},containerColor=Color(0xFF07130B))}
- }
- }
+ message?.let{AlertDialog(onDismissRequest={message=null},confirmButton={TextButton(onClick={message=null}){Text(tr("OK"),color=Green)}},text={Text(it,color=Color.White)},containerColor=Color(0xFF101812))}
  }}
 }
 
-
-@Composable private fun TerminalBootScreen(language:String,onFinished:()->Unit){
- val lines=remember(language){if(language=="ru")listOf(
-  ">> ДОБРО ПОЖАЛОВАТЬ, ОПЕРАТОР.","[KERNEL] загрузка защищённого ядра .......... OK","[CRYPTO] инициализация AES-256-GCM .......... OK","[KEYS] Android Keystore ..................... SEALED","[NET] проверка сетевого интерфейса .......... OK","[FIREWALL] правила доступа .................. LOADED","[VAULT] локальный контейнер ................. MOUNTED","[AUTH] шлюз авторизации ..................... READY","[SYS] все подсистемы отвечают."
- )else listOf(
-  ">> WELCOME BACK, OPERATOR.","[KERNEL] loading hardened runtime ........... OK","[CRYPTO] initializing AES-256-GCM ........... OK","[KEYS] Android Keystore ..................... SEALED","[NET] probing network interface ............. OK","[FIREWALL] access control rules ............. LOADED","[VAULT] local encrypted volume .............. MOUNTED","[AUTH] authentication gateway ............... READY","[SYS] all subsystems responding."
- )}
- val printed=remember{mutableStateListOf<String>()};var progress by remember{mutableIntStateOf(0)};var cursor by remember{mutableStateOf(true)}
- LaunchedEffect(Unit){while(true){cursor=!cursor;delay(380)}}
- LaunchedEffect(lines){printed.clear();lines.forEachIndexed{index,line->printed.add("");line.forEach{ch->printed[index]=printed[index]+ch;delay(if(index==0)20 else 8)};progress=(index+1)*100/lines.size;delay(170)};delay(700);onFinished()}
- Column(Modifier.fillMaxSize().padding(horizontal=13.dp,vertical=22.dp),verticalArrangement=Arrangement.Center){
-  Text("  ___ ____    __     __",color=Green,fontSize=18.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-  Text(" |_ _|  _ \\  \\ \\   / /",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  Text("  | || |_) |  \\ \\ / /",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  Text(" |___|____/    \\___/",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  Text(" [ IP_VAULT // SECURE STORAGE TERMINAL ]",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  Spacer(Modifier.height(18.dp));Text("┌─ BOOT SEQUENCE / AUTHENTICATED STARTUP",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
-  Column(Modifier.fillMaxWidth().background(Color(0xB8030905)).padding(9.dp)){printed.forEachIndexed{index,line->Text(line+(if(index==printed.lastIndex&&progress<100&&cursor)" ▌"else""),color=if(index==0)Green else Color(0xFFB4DCC0),fontSize=14.sp,fontFamily=FontFamily.Monospace,lineHeight=14.sp)}}
-  Spacer(Modifier.height(12.dp));Text("TRANSFER  ["+"█".repeat(progress/5)+"·".repeat(20-progress/5)+"]  "+progress+"%",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
-  Text(if(progress<100)"root@ipvault:~$ initializing..."else"root@ipvault:~$ access gateway ready_"+(if(cursor)"▌"else""),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
- }
-}
-@Composable private fun MatrixRainBackground(modifier:Modifier=Modifier) {
- val transition=rememberInfiniteTransition(label="matrix-rain")
- val phase by transition.animateFloat(0f,1f,infiniteRepeatable(tween(9000,easing=LinearEasing)),label="rain-phase")
- val glyphs=listOf("ア","イ","ウ","エ","オ","カ","キ","ク","ケ","コ","サ","シ","ス","セ","ソ","タ","チ","ツ","テ","ト","ナ","ニ","ヌ","ネ","ノ","ハ","ヒ","フ","ヘ","ホ","マ","ミ","ム","メ","モ","ヤ","ユ","ヨ","ラ","リ","ル","レ","ロ","ワ","ン","零","一","二","三","四","五","六","七","八","九")
- Canvas(modifier) {
-  drawRect(Color(0xFF010302))
-  val native=drawContext.canvas.nativeCanvas
-  val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-   typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.NORMAL)
-   textSize=22f
-  }
-  val step=30f
-  val columns=(size.width/step).toInt()+1
-  val rows=(size.height/step).toInt()+2
-  for(column in 0 until columns) {
-   val speed=0.45f+(column%5)*0.13f
-   val offset=(column*73)%rows
-   val head=((phase*rows*2*speed+offset)% (rows+8)).toInt()
-   for(tail in 0..9) {
-    val row=head-tail
-    if(row<0||row>=rows) continue
-    val glyph=glyphs[(column*11+row*7+tail*3)%glyphs.size]
-    val alpha=if(tail==0)210 else (105-tail*9).coerceAtLeast(18)
-    paint.color=if(tail==0)android.graphics.Color.argb(235,170,255,190) else android.graphics.Color.argb(alpha,0,190,75)
-    native.drawText(glyph,column*step+4f,row*step+step,paint)
-   }
-  }
- }
-}
-@Composable private fun TerminalHeader(title:String,path:String="SYS://IP_VAULT") {
- Column(Modifier.fillMaxWidth()){
-  Text("IP_VAULT // SECURE NODE",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-  Text(title.uppercase(),color=Color(0xFFD8F5DF),fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  Text("LINK: ENCRYPTED  •  SESSION: ACTIVE",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  Text(path,color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  HorizontalDivider(color=TerminalLineColor)
- }
-}
-@Composable private fun TerminalFooter(text:String="END OF SESSION") {
-    Column(Modifier.fillMaxWidth()) {
-        HorizontalDivider(color=TerminalLineColor)
-        Spacer(Modifier.height(6.dp))
-        Text("[" + text + "]  •  LOCAL ENCRYPTED STORAGE", color=Muted, fontSize=14.sp, fontFamily=FontFamily.Monospace, letterSpacing=1.sp)
-    }
-}
-@Composable private fun TerminalPanel(title:String,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
- Column(modifier.fillMaxWidth().padding(vertical=1.dp)){
-  Text("[ "+title.uppercase()+" ]",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-  HorizontalDivider(color=TerminalLineColor)
-  Column(Modifier.fillMaxWidth().padding(start=2.dp,top=4.dp,bottom=4.dp)){content()}
- }
-}
-@Composable private fun TerminalButton(label:String,modifier:Modifier=Modifier,enabled:Boolean=true,danger:Boolean=false,onClick:()->Unit){
- val tint=if(danger)Color(0xFFFF625D)else Green
- Row(modifier.fillMaxWidth().clickable(enabled=enabled,onClick=onClick).padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically){
-  Text("root@ipvault:~$",color=Muted,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false);Spacer(Modifier.width(5.dp))
-  Text(label.lowercase().replace(" ","_"),modifier=Modifier.weight(1f),color=if(enabled)tint else Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-  Spacer(Modifier.width(5.dp))
-  Text(if(enabled)"[ ENTER ↵ ]" else "[ LOCKED ]",modifier=Modifier.width(88.dp),color=Muted,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false,textAlign=androidx.compose.ui.text.style.TextAlign.End)
- }
-}
-@Composable private fun TerminalMenuRow(label:String,index:String,detail:String="",onClick:()->Unit){
- Column(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=3.dp)){
-  Row(verticalAlignment=Alignment.CenterVertically){Text("├─ ["+index+"]",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(8.dp));Text(keepParentheticalTogether(label.uppercase()),color=Color(0xFFD8F5DF),fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("▶",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)}
-  if(detail.isNotEmpty())Text("│     "+keepParentheticalTogether(detail),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
- }
-}
-@Composable private fun TerminalField(value:String,onValueChange:(String)->Unit,label:String,password:Boolean=false,keyboardOptions:KeyboardOptions=KeyboardOptions.Default){
- Column(Modifier.fillMaxWidth().padding(vertical=2.dp)){
-  Text("# "+label.uppercase(),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-  Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
-   Text("root@ipvault:~$ ",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-   BasicTextField(value=value,onValueChange=onValueChange,singleLine=true,visualTransformation=if(password)PasswordVisualTransformation()else androidx.compose.ui.text.input.VisualTransformation.None,keyboardOptions=keyboardOptions,textStyle=androidx.compose.ui.text.TextStyle(color=Color(0xFFE2FFE8),fontFamily=FontFamily.Monospace,fontSize=14.sp),cursorBrush=SolidColor(Green),modifier=Modifier.weight(1f))
-  }
-  Text("─".repeat(42),color=Color(0xFF245A38),fontSize=14.sp,fontFamily=FontFamily.Monospace)
- }
-}
-@Composable private fun TerminalPage(title:String, path:String, back:(()->Unit)?=null, content:@Composable ColumnScope.()->Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=10.dp, vertical=8.dp)) {
-        if(back!=null) Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("< ESC", Modifier.clickable(onClick=back).padding(end=14.dp), color=Green, fontSize=14.sp, fontFamily=FontFamily.Monospace)
-            Spacer(Modifier.weight(1f))
-            Text("TERMINAL SESSION", color=Muted, fontSize=14.sp, fontFamily=FontFamily.Monospace)
-        }
-        TerminalHeader(title,path)
-        Spacer(Modifier.height(12.dp))
-        content()
-        Spacer(Modifier.height(14.dp))
-        TerminalFooter()
-    }
-}
-private fun keepParentheticalTogether(value:String):String {
-    val start=value.indexOf('(')
-    val end=if(start>=0)value.indexOf(')',start+1) else -1
-    if(start<0||end<0)return value.replace(" (","\u00A0(")
-    val inside=value.substring(start,end+1).replace(" ","\u00A0")
-    return value.substring(0,start).replace(Regex(" +$"),"\u00A0")+inside+value.substring(end+1)
-}
-
-@Composable private fun TerminalLine(value:String,color:Color=Color.White) {
-    Text(keepParentheticalTogether(value),color=color,fontSize=17.sp,fontFamily=FontFamily.Monospace,softWrap=true)
-}
-@Composable private fun CenterStatus(t:String,d:String) {
-    Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.Start,verticalArrangement=Arrangement.Center) {
-        Text("┌── BOOT SEQUENCE ──────────────────",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
-        Spacer(Modifier.height(16.dp))
-        Text("IP_VAULT",color=Green,fontSize=28.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
-        Spacer(Modifier.height(8.dp))
-        Text("> " + t.uppercase(),color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace)
-        Text("> " + d.uppercase(),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-        Spacer(Modifier.height(16.dp))
-        Text("INITIALIZING SECURE ENVIRONMENT  ▓▓▓▓▓▓░░░",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
-    }
-}
-@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit) {
-    var value by remember(ip){mutableStateOf(ip.orEmpty())}
-    TerminalPage("INITIAL TRUST","SYS://SETUP") {
-        TerminalPanel("NETWORK DISCOVERY") {
-            TerminalLine("> PUBLIC IP DETECTED: " + (ip ?: "UNAVAILABLE"), if(ip==null)TerminalAmber else Green)
-            Spacer(Modifier.height(5.dp))
-            Text(tr("Add your current public IP to initialize the global whitelist."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-        }
-        Spacer(Modifier.height(16.dp))
-        TerminalField(value,{value=it},tr("Public IP address"),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii))
-        Spacer(Modifier.height(12.dp))
-        TerminalButton(tr("TRUST THIS IP"),enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$"))){onTrust(value.trim())}
-        if(ip==null) Text("! NETWORK OFFLINE — CONNECT AND RESTART",color=TerminalAmber,fontSize=17.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.padding(top=12.dp))
-    }
-}
-@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
- val pulse=rememberInfiniteTransition(label="telemetry");val tick by pulse.animateFloat(0f,1f,infiniteRepeatable(tween(1200,easing=LinearEasing),RepeatMode.Reverse),label="tick")
- TerminalPage("GHOST TERMINAL","SYS://ROOT"){
-  TerminalPanel("LIVE SYSTEM TELEMETRY"){
-   TerminalLine(" [●] CORE: ONLINE",Green);TerminalLine(" [●] AES-256-GCM: READY",Green);TerminalLine(" [●] KEYSTORE: SEALED",Green);TerminalLine(" [●] NETWORK: "+ip,Color(0xFFB8D8C0));TerminalLine(" [●] VAULT: ENCRYPTED",Green);TerminalLine(" ["+(if(tick>.5f)"●" else " ")+"] SESSION: ACTIVE",Green)
-  }
-  Spacer(Modifier.height(8.dp))
-  TerminalPanel("NODE MAP // LOCAL ARCHITECTURE"){
-   TerminalLine("          [ IP_VAULT ]",Green)
-   TerminalLine("                |",Muted)
-   TerminalLine("       +--------+--------+",Muted)
-   TerminalLine("       |        |        |",Muted)
-   TerminalLine("    [CIPHER] [ACCESS] [VAULT]",Green)
-   TerminalLine("    AES-256   IP ACL   LOCAL",Color(0xFF9DC9AA))
-  }
-  Spacer(Modifier.height(8.dp))
-  TerminalPanel("NIGHT SHIFT // EVENT STREAM"){
-   TerminalLine("00:00:01  SYS   session handshake ........ OK",Color(0xFFB8D8C0));TerminalLine("00:00:02  CRYP  vault cipher .............. READY",Color(0xFFB8D8C0));TerminalLine("00:00:03  NET   trusted route ............. ACTIVE",Color(0xFFB8D8C0));TerminalLine("00:00:04  AUTH  access policy ............. ENFORCED",Green);TerminalLine("00:00:05  LOG   local audit ............... SEALED",Color(0xFFB8D8C0))
-  }
-  Spacer(Modifier.height(8.dp));Text("root@ipvault:~$ vault --list-sectors",color=Color(0xFFB8D8C0),fontSize=17.sp,fontFamily=FontFamily.Monospace)
-  TerminalMenuRow("ALL ENCRYPTED OBJECTS","01","vault://files",all);TerminalMenuRow("IMAGE SECTOR","02","vault://media/images",images);TerminalMenuRow("VIDEO SECTOR","03","vault://media/video",videos);TerminalMenuRow("AUDIO SECTOR","04","vault://media/audio",audio);TerminalMenuRow("DOCUMENTS / OTHER","05","vault://data/misc",other)
-  Spacer(Modifier.height(8.dp));TerminalButton("open system configuration",onClick=settings)
- }
-}
-@Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit) {
+@Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
+@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
+@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=28.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}};Spacer(Modifier.height(32.dp));Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(14.dp));Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Text(ip,color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(30.dp));Text(tr("MY VAULT"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);VaultMenuRow(tr("ALL FILES"),Icons.Outlined.Folder,all);VaultMenuRow(tr("PHOTOS"),Icons.Outlined.Image,images);VaultMenuRow(tr("VIDEO"),Icons.Outlined.Videocam,videos);VaultMenuRow(tr("AUDIO"),Icons.Outlined.Headphones,audio);VaultMenuRow(tr("DOCUMENTS & OTHER"),Icons.Outlined.Description,other)}}
+@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=click).padding(vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=Green);Spacer(Modifier.width(14.dp));Text(label,color=Color.White,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=Muted)};HorizontalDivider(color=Color(0xFF17231B))}
+@Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit){
     BackHandler(onBack=back)
     val shown=items.filter{when(filter){"IMAGE"->it.mime.startsWith("image/");"VIDEO"->it.mime.startsWith("video/");"AUDIO"->it.mime.startsWith("audio/");"OTHER"->!(it.mime.startsWith("image/")||it.mime.startsWith("video/")||it.mime.startsWith("audio/"));else->true}}
     val title=when(filter){"IMAGE"->"PHOTOS";"VIDEO"->"VIDEO";"AUDIO"->"AUDIO";"OTHER"->"OTHER FILES";else->"ALL FILES"}
-    TerminalPage(title,"FS://VAULT",back) {
-        TerminalPanel("DIRECTORY SCAN") {
-            TerminalLine("> " + shown.size + " OBJECT(S) FOUND",Green)
-            TerminalLine("> FILTER: " + filter)
+    Column(Modifier.fillMaxSize().padding(start=20.dp,end=20.dp,top=52.dp,bottom=20.dp)){
+        Row(verticalAlignment=Alignment.CenterVertically){
+            IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,null,tint=Green)}
+            Text(tr(title),color=Green,fontSize=20.sp,fontFamily=FontFamily.Monospace)
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick=add){Icon(Icons.Outlined.Add,null,tint=Green)}
         }
-        Spacer(Modifier.height(9.dp))
-        TerminalButton("+ IMPORT ENCRYPTED FILE",onClick=add)
-        Spacer(Modifier.height(8.dp))
-        if(shown.isEmpty()) TerminalPanel("EMPTY DIRECTORY") {
-            TerminalLine("[ NO OBJECTS IN THIS SECTOR ]",Muted)
-            TerminalLine("> Use import command to add files.")
-        } else {
-            LazyColumn(Modifier.weight(1f,fill=true)) {
-                items(shown,key={it.id}) { item ->
-                    Column(Modifier.fillMaxWidth().padding(vertical=7.dp)) {
-                        Row(Modifier.fillMaxWidth().clickable{open(item)},verticalAlignment=Alignment.CenterVertically) {
-                            Text("-rw-------",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-                            Spacer(Modifier.width(7.dp))
-                            Text(item.name,color=Color(0xFFE1F8E7),fontSize=14.sp,fontFamily=FontFamily.Monospace,maxLines=1,modifier=Modifier.weight(1f))
-                            Text("[ OPEN ]",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false)
-                        }
-                        Row(verticalAlignment=Alignment.CenterVertically) {
-                            Text("│  MIME: "+item.mime,color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.weight(1f))
-                            Text("[ DELETE ]",Modifier.clickable{delete(item)}.padding(horizontal=5.dp,vertical=3.dp),color=TerminalAmber,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false)
-                        }
-                        Text("└─ ID: "+item.id.take(18)+"…",color=Color(0xFF527A60),fontSize=17.sp,fontFamily=FontFamily.Monospace)
-                    }
-                    HorizontalDivider(color=TerminalLineColor)
-                }
+        Spacer(Modifier.height(12.dp))
+        if(shown.isEmpty())Text(tr("NO FILES"),color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=12.dp))
+        LazyColumn{items(shown,key={it.id}){item->
+            Row(Modifier.fillMaxWidth().clickable{open(item)}.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically){
+                Icon(when{item.mime.startsWith("image/")->Icons.Outlined.Image;item.mime.startsWith("video/")->Icons.Outlined.Videocam;item.mime.startsWith("audio/")->Icons.Outlined.Headphones;else->Icons.Outlined.Description},null,tint=Green)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)){Text(item.name,color=Color.White,maxLines=1);Text(item.mime,color=Muted,fontSize=10.sp)}
+                IconButton(onClick={delete(item)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}
             }
-        }
+            HorizontalDivider(color=Color(0xFF17231B))
+        }}
     }
 }
-@Composable private fun WhitelistScreen(ips:Set<String>,current:String?,language:String,setLanguage:(String)->Unit,back:()->Unit,add:(String)->Unit,remove:(String)->Unit,changePassword:(String,String)->Unit) {
-    var section by rememberSaveable{mutableStateOf("main")}
-    var entry by remember{mutableStateOf("")}
-    var oldPassword by remember{mutableStateOf("")}
-    var newPassword by remember{mutableStateOf("")}
-    var confirmPassword by remember{mutableStateOf("")}
-    BackHandler(enabled=section!="main"){section="main"}
-    val title=when(section){"password"->tr("BACKUP PASSWORD");"ips"->tr("IP WHITELIST");"language"->tr("LANGUAGE");else->tr("SETTINGS")}
-    TerminalPage(title,"SYS://CONFIG",if(section=="main") back else ({ section="main" })) {
+@Composable
+private fun WhitelistScreen(
+    ips: Set<String>, current: String?, language: String, setLanguage: (String) -> Unit, back: () -> Unit,
+    add: (String) -> Unit, remove: (String) -> Unit,
+    changePassword: (String,String) -> Unit
+) {
+    var section by rememberSaveable { mutableStateOf("main") }
+    var entry by remember { mutableStateOf("") }
+    var oldPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    BackHandler(enabled = section != "main") { section = "main" }
+    Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=24.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { if (section == "main") back() else section = "main" }) {
+                Icon(Icons.Outlined.ArrowBack, null, tint = Green)
+            }
+            Text(when(section) { "password" -> tr("BACKUP PASSWORD"); "ips" -> tr("IP WHITELIST"); "language" -> tr("LANGUAGE"); else -> tr("SETTINGS") },
+                color = Green, fontSize = 20.sp, fontFamily = FontFamily.Monospace)
+        }
+        Spacer(Modifier.height(24.dp))
         when(section) {
             "main" -> {
-                TerminalPanel("CONFIGURATION MODULES") {
-                    TerminalMenuRow(tr("CHANGE BACKUP PASSWORD"),"01","Credential rotation"){section="password"}
-                    TerminalMenuRow(tr("IP WHITELIST"),"02","Trusted network addresses"){section="ips"}
-                    TerminalMenuRow(tr("LANGUAGE"),"03","Interface locale"){section="language"}
-                }
+                Text(tr("SECURITY"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
+                Spacer(Modifier.height(12.dp))
+                VaultMenuRow(tr("CHANGE BACKUP PASSWORD"), Icons.Outlined.Lock) { section="password" }
+                VaultMenuRow(tr("IP WHITELIST"), Icons.Outlined.Shield) { section="ips" }
+                VaultMenuRow(tr("LANGUAGE"), Icons.Outlined.Language) { section="language" }
+                Spacer(Modifier.weight(1f))
+                HorizontalDivider(color=Color(0xFF17231B))
                 Spacer(Modifier.height(14.dp))
-                TerminalPanel("OPERATOR") {
-                    TerminalLine("USER      : Merik")
-                    TerminalLine("PRODUCT   : IP_VAULT")
-                    TerminalLine("MODE      : LOCAL ONLY")
-                }
+                Text(tr("AUTHOR"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
+                Spacer(Modifier.height(5.dp))
+                Text("Merik", color=Color.White, fontSize=14.sp, fontFamily=FontFamily.Monospace)
             }
             "password" -> {
-                TerminalLine("> CREDENTIAL ROTATION // VERIFY CURRENT KEY",Muted)
-                Spacer(Modifier.height(12.dp))
-                TerminalField(oldPassword,{oldPassword=it},tr("Current password"),true)
-                Spacer(Modifier.height(9.dp))
-                TerminalField(newPassword,{newPassword=it},tr("New password (8+ characters)"),true)
-                Spacer(Modifier.height(9.dp))
-                TerminalField(confirmPassword,{confirmPassword=it},tr("Repeat new password"),true)
-                Spacer(Modifier.height(12.dp))
-                TerminalButton(tr("UPDATE PASSWORD"),enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword) {
-                    changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""
-                }
+                Text(tr("Confirm your current password before setting a new one."), color=Muted, fontSize=12.sp)
+                Spacer(Modifier.height(18.dp))
+                OutlinedTextField(oldPassword,{oldPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("Current password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(newPassword,{newPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("New password (8+ characters)"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(confirmPassword,{confirmPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("Repeat new password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                Spacer(Modifier.height(16.dp))
+                Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""},
+                    enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword,
+                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("UPDATE PASSWORD"))}
             }
             "language" -> {
-                TerminalPanel("SELECT INTERFACE LOCALE") {
-                    TerminalMenuRow("РУССКИЙ","RU",if(language=="ru")"ACTIVE" else "SELECT"){setLanguage("ru")}
-                    TerminalMenuRow("ENGLISH","EN",if(language=="en")"ACTIVE" else "SELECT"){setLanguage("en")}
-                }
+                Text(tr("LANGUAGE"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
+                Spacer(Modifier.height(12.dp))
+                VaultMenuRow(tr("RUSSIAN"), Icons.Outlined.Language) { setLanguage("ru") }
+                VaultMenuRow(tr("ENGLISH"), Icons.Outlined.Language) { setLanguage("en") }
             }
             "ips" -> {
-                TerminalLine("> TRUSTED NETWORK ACCESS CONTROL",Muted)
-                Spacer(Modifier.height(10.dp))
-                TerminalField(entry,{entry=it},tr("IPv4 / IPv6"))
-                Spacer(Modifier.height(10.dp))
-                TerminalButton(tr("ADD IP"),enabled=entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$"))){add(entry.trim());entry=""}
-                Spacer(Modifier.height(12.dp))
-                Text("$ whitelist --entries",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-                LazyColumn(Modifier.weight(1f,fill=true)) {
+                Text(tr("Manage IP addresses allowed to access your vault."), color=Muted, fontSize=12.sp)
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(value=entry,onValueChange={entry=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("IPv4 / IPv6"))},singleLine=true,colors=vaultFieldColors())
+                Spacer(Modifier.height(8.dp))
+                Button(onClick={add(entry.trim());entry=""},enabled=entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),
+                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("ADD IP"))}
+                Spacer(Modifier.height(18.dp))
+                LazyColumn(Modifier.weight(1f)) {
                     items(ips.sorted()) { address ->
-                        Row(Modifier.fillMaxWidth().padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(address,color=Color.White,fontFamily=FontFamily.Monospace,fontSize=17.sp)
-                                Text(if(address==current)"CURRENT NODE / ACTIVE" else "TRUSTED ADDRESS",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+                                Text(address,color=Color.White,fontFamily=FontFamily.Monospace)
+                                Text(tr(if(address==current)"CURRENT IP" else "ALLOWED"),color=Green,fontSize=10.sp)
                             }
-                            Text("[ REVOKE ]",Modifier.clickable{remove(address)}.padding(6.dp),color=TerminalAmber,fontFamily=FontFamily.Monospace,fontSize=12.sp,maxLines=1,softWrap=false)
+                            IconButton(onClick={remove(address)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}
                         }
-                        HorizontalDivider(color=TerminalLineColor)
+                        HorizontalDivider(color=Color(0xFF17231B))
                     }
                 }
             }
         }
     }
 }
-@Composable private fun vaultFieldColors()=OutlinedTextFieldDefaults.colors(focusedBorderColor=Green,unfocusedBorderColor=TerminalLineColor,focusedLabelColor=Green,cursorColor=Green)
+@Composable private fun vaultFieldColors()=OutlinedTextFieldDefaults.colors(focusedBorderColor=Green,unfocusedBorderColor=Muted,focusedLabelColor=Green,cursorColor=Green)
 
-@Composable private fun EmergencyPasswordSetupScreen(onSave:(String)->Unit) {
+@Composable private fun EmergencyPasswordSetupScreen(onSave:(String)->Unit){
     var password by remember{mutableStateOf("")}
     var confirm by remember{mutableStateOf("")}
-    TerminalPage("EMERGENCY CREDENTIAL","SEC://RECOVERY") {
-        TerminalPanel("RECOVERY KEY SETUP") {
-            TerminalLine("> CREATE A SECONDARY ACCESS KEY",Green)
-            Text(tr("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-        }
-        Spacer(Modifier.height(13.dp))
-        TerminalField(password,{password=it},tr("Backup password"),true)
-        Spacer(Modifier.height(9.dp))
-        TerminalField(confirm,{confirm=it},tr("Repeat new password"),true)
+    Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
+        Text(tr("EMERGENCY ACCESS"),color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace)
         Spacer(Modifier.height(12.dp))
-        TerminalButton(tr("SAVE BACKUP PASSWORD"),enabled=password.length>=8&&password==confirm){onSave(password)}
-        if(password.isNotEmpty()&&password.length<8) Text("! MINIMUM 8 CHARACTERS",color=TerminalAmber,fontSize=17.sp,fontFamily=FontFamily.Monospace)
-        if(confirm.isNotEmpty()&&password!=confirm) Text("! PASSWORDS DO NOT MATCH",color=TerminalAmber,fontSize=17.sp,fontFamily=FontFamily.Monospace)
+        Text(tr("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist."),color=Muted)
+        Spacer(Modifier.height(18.dp))
+        OutlinedTextField(password,{password=it},label={Text(tr("Backup password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(confirm,{confirm=it},label={Text(tr("Repeat new password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(16.dp))
+        Button(onClick={onSave(password)},enabled=password.length>=8&&password==confirm,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("SAVE BACKUP PASSWORD"))}
+        if(password.isNotEmpty()&&password.length<8)Text(tr("Use at least 8 characters."),color=Muted,fontSize=11.sp)
+        if(confirm.isNotEmpty()&&password!=confirm)Text(tr("Passwords do not match."),color=Muted,fontSize=11.sp)
     }
 }
-@Composable private fun EmergencyPasswordEntryScreen(onCancel:()->Unit,onUnlock:(String)->Unit) {
+@Composable private fun EmergencyPasswordEntryScreen(onCancel:()->Unit,onUnlock:(String)->Unit){
     var password by remember{mutableStateOf("")}
-    TerminalPage("RECOVERY AUTHENTICATION","SEC://UNLOCK") {
-        TerminalPanel("UNAUTHORIZED NETWORK DETECTED") {
-            TerminalLine("> SECONDARY CREDENTIAL REQUIRED",TerminalAmber)
-            Text(tr("Enter your backup password to unlock IP VAULT."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-        }
-        Spacer(Modifier.height(14.dp))
-        TerminalField(password,{password=it},tr("Backup password"),true)
+    Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
+        Text("EMERGENCY ACCESS",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace)
         Spacer(Modifier.height(12.dp))
-        TerminalButton(tr("UNLOCK"),enabled=password.isNotEmpty()){onUnlock(password)}
-        Spacer(Modifier.height(8.dp))
-        Text("< CANCEL / ESC",Modifier.clickable(onClick=onCancel).padding(8.dp),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+        Text(tr("Enter your backup password to unlock IP VAULT."),color=Muted)
+        Spacer(Modifier.height(18.dp))
+        OutlinedTextField(password,{password=it},label={Text("Backup password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment=Alignment.CenterVertically){
+            TextButton(onClick=onCancel){Text(tr("CANCEL"),color=Muted)}
+            Spacer(Modifier.width(12.dp))
+            Button(onClick={onUnlock(password)},enabled=password.isNotEmpty(),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("UNLOCK"))}
+        }
     }
 }
-@Composable private fun AccessDeniedGestureScreen(onRecognized:()->Unit) {
-    Box(Modifier.fillMaxSize().pointerInput(onRecognized) {
-        val gesturePoints=mutableListOf<Offset>()
-        detectDragGestures(onDragStart={start->gesturePoints.clear();gesturePoints.add(start)},onDrag={change,_->gesturePoints.add(change.position)},onDragEnd={if(isEmergencyM(gesturePoints.toList(),size.width.toFloat(),size.height.toFloat()))onRecognized();gesturePoints.clear()},onDragCancel={gesturePoints.clear()})
-    }.padding(22.dp),contentAlignment=Alignment.Center) {
-        Column(Modifier.fillMaxWidth()) {
-            TerminalHeader("ACCESS DENIED","SEC://FIREWALL")
-            Spacer(Modifier.height(20.dp))
-            TerminalPanel("FIREWALL RESPONSE") {
-                TerminalLine("!!! CONNECTION REJECTED",TerminalAmber)
-                TerminalLine("> SOURCE IP NOT IN TRUST DATABASE")
-                TerminalLine("> SESSION STATE: LOCKED",TerminalAmber)
-                Spacer(Modifier.height(8.dp))
-                Text(tr("This IP address is not authorized."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
-            }
-            Spacer(Modifier.height(18.dp))
-            Text("SYSTEM IS LISTENING...",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
-            Text("HIDDEN RECOVERY GESTURE ENABLED",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+@Composable private fun AccessDeniedGestureScreen(onRecognized:()->Unit){
+    Box(
+        Modifier.fillMaxSize().pointerInput(onRecognized) {
+            val gesturePoints = mutableListOf<Offset>()
+            detectDragGestures(
+                onDragStart={start->gesturePoints.clear();gesturePoints.add(start)},
+                onDrag={change,_->gesturePoints.add(change.position)},
+                onDragEnd={
+                    if(isEmergencyM(gesturePoints.toList(),size.width.toFloat(),size.height.toFloat())) onRecognized()
+                    gesturePoints.clear()
+                },
+                onDragCancel={gesturePoints.clear()}
+            )
+        },
+        contentAlignment=Alignment.Center
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal=24.dp),
+            horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
+            Text("IP VAULT",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace)
+            Spacer(Modifier.height(12.dp))
+            Text(tr("ACCESS DENIED"),color=Color.White,fontSize=18.sp,fontFamily=FontFamily.Monospace)
+            Spacer(Modifier.height(8.dp))
+            Text(tr("This IP address is not authorized."),color=Muted,fontSize=12.sp)
+            Spacer(Modifier.height(24.dp))
+            Text(tr("IP VAULT // LOCKED"),color=Muted,fontSize=9.sp,letterSpacing=2.sp)
         }
     }
 }
