@@ -262,9 +262,30 @@ private fun isEmergencyM(points:List<Offset>,width:Float,height:Float):Boolean{
     if(points.size<12)return false
     val minX=points.minOf{it.x};val maxX=points.maxOf{it.x};val minY=points.minOf{it.y};val maxY=points.maxOf{it.y}
     if(maxX-minX<width*.35f||maxY-minY<height*.35f)return false
-    val targets=listOf(Offset(.08f,.92f),Offset(.08f,.08f),Offset(.5f,.62f),Offset(.92f,.08f),Offset(.92f,.92f))
     val normalized=points.map{Offset((it.x-minX)/(maxX-minX),(it.y-minY)/(maxY-minY))}
-    var error=0.0
-    for(i in targets.indices){val p=normalized[(i*(normalized.size-1))/4];error+=kotlin.math.hypot((p.x-targets[i].x).toDouble(),(p.y-targets[i].y).toDouble())}
-    return error/targets.size<.36
+    val lengths=normalized.zipWithNext().map{(a,b)->kotlin.math.hypot((b.x-a.x).toDouble(),(b.y-a.y).toDouble())}
+    val total=lengths.sum()
+    if(total<2.0)return false
+    val samples=(0..4).map{index->
+        val target=total*index/4.0
+        var traversed=0.0
+        var result=normalized.last()
+        for(i in lengths.indices){
+            val segment=lengths[i]
+            if(traversed+segment>=target){
+                val fraction=if(segment==0.0)0.0 else (target-traversed)/segment
+                result=Offset(
+                    (normalized[i].x+(normalized[i+1].x-normalized[i].x)*fraction).toFloat(),
+                    (normalized[i].y+(normalized[i+1].y-normalized[i].y)*fraction).toFloat()
+                )
+                break
+            }
+            traversed+=segment
+        }
+        result
+    }
+    val target= listOf(Offset(.08f,.92f),Offset(.08f,.08f),Offset(.5f,.62f),Offset(.92f,.08f),Offset(.92f,.92f))
+    val direct=samples.zip(target).sumOf{(a,b)->kotlin.math.hypot((a.x-b.x).toDouble(),(a.y-b.y).toDouble())}
+    val reverse=samples.reversed().zip(target).sumOf{(a,b)->kotlin.math.hypot((a.x-b.x).toDouble(),(a.y-b.y).toDouble())}
+    return minOf(direct,reverse)/5.0<.32
 }
