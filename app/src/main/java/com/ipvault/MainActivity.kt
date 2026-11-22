@@ -190,80 +190,27 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 }
 
 
-@Composable private fun TerminalBootScreen(language:String,onFinished:()->Unit) {
-    val lines = remember(language) {
-        if(language=="ru") listOf(
-            "> ДОБРО ПОЖАЛОВАТЬ, ОПЕРАТОР.",
-            "> ЗАПУСК IP_VAULT SECURE ENVIRONMENT...",
-            "> ИНИЦИАЛИЗАЦИЯ ЯДРА СИСТЕМЫ ........ OK",
-            "> ПРОВЕРКА ANDROID KEYSTORE .......... OK",
-            "> ЗАГРУЗКА AES-256-GCM ENGINE ........ OK",
-            "> ПРОВЕРКА ЛОКАЛЬНОГО ХРАНИЛИЩА ...... OK",
-            "> ЗАПУСК МОДУЛЯ FIREWALL ............. OK",
-            "> ПРОВЕРКА КОНФИГУРАЦИИ ДОСТУПА ...... OK",
-            "> ПОДГОТОВКА МОДУЛЯ АВТОРИЗАЦИИ ...... OK",
-            "> ВСЕ СИСТЕМЫ ГОТОВЫ."
-        ) else listOf(
-            "> HELLO, OPERATOR.",
-            "> INITIALIZING IP_VAULT SECURE ENVIRONMENT...",
-            "> SYSTEM KERNEL INITIALIZATION ........ OK",
-            "> ANDROID KEYSTORE INTERFACE .......... OK",
-            "> LOADING AES-256-GCM ENGINE .......... OK",
-            "> LOCAL VAULT INTEGRITY CHECK ......... OK",
-            "> STARTING FIREWALL MODULE ............ OK",
-            "> ACCESS CONFIGURATION CHECK .......... OK",
-            "> PREPARING AUTHENTICATION GATE ....... OK",
-            "> ALL SYSTEMS OPERATIONAL."
-        )
-    }
-    val printed = remember { mutableStateListOf<String>() }
-    var progress by remember { mutableIntStateOf(0) }
-    var cursorVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
-        while(true) { cursorVisible=!cursorVisible; delay(420) }
-    }
-    LaunchedEffect(lines) {
-        printed.clear()
-        lines.forEachIndexed { index, line ->
-            printed.add("")
-            for (character in line) {
-                printed[index] = printed[index] + character
-                delay(13)
-            }
-            progress = ((index+1)*100)/lines.size
-            delay(155)
-        }
-        delay(650)
-        onFinished()
-    }
-    Column(Modifier.fillMaxSize().padding(horizontal=19.dp, vertical=24.dp), verticalArrangement=Arrangement.Center) {
-        Text("╔══════════════════════════════════╗",color=Green,fontFamily=FontFamily.Monospace,fontSize=11.sp)
-        Text("║          I P _ V A U L T           ║",color=Green,fontFamily=FontFamily.Monospace,fontSize=13.sp,fontWeight=FontWeight.Bold)
-        Text("║       SECURE TERMINAL v1.0         ║",color=Muted,fontFamily=FontFamily.Monospace,fontSize=9.sp)
-        Text("╚══════════════════════════════════╝",color=Green,fontFamily=FontFamily.Monospace,fontSize=11.sp)
-        Spacer(Modifier.height(22.dp))
-        Text("BOOT SEQUENCE // AUTHENTICATED STARTUP",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
-        Spacer(Modifier.height(12.dp))
-        Column(Modifier.fillMaxWidth().heightIn(min=230.dp).background(Color(0xCC030A05)).border(1.dp,TerminalLineColor).padding(12.dp),verticalArrangement=Arrangement.Bottom) {
-            printed.forEachIndexed { index, line ->
-                Text(line + if(index==printed.lastIndex && progress<100 && cursorVisible) " ▌" else "",color=if(index==0||index==printed.lastIndex)Green else Color(0xFFB5D8BE),fontSize=9.sp,fontFamily=FontFamily.Monospace,lineHeight=15.sp)
-            }
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("BOOT PROGRESS",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
-            Spacer(Modifier.weight(1f))
-            Text("$progress%",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-        }
-        Spacer(Modifier.height(7.dp))
-        Row(Modifier.fillMaxWidth().height(9.dp).border(1.dp,Green).padding(1.dp),horizontalArrangement=Arrangement.Start) {
-            if(progress>0) Box(Modifier.fillMaxWidth(progress/100f).fillMaxHeight().background(Green))
-        }
-        Spacer(Modifier.height(14.dp))
-        Text(if(progress<100) "EXECUTING STARTUP ROUTINES..." else "STARTUP COMPLETE // OPENING ACCESS GATE",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
-    }
+@Composable private fun TerminalBootScreen(language:String,onFinished:()->Unit){
+ val lines=remember(language){if(language=="ru")listOf(
+  ">> ДОБРО ПОЖАЛОВАТЬ, ОПЕРАТОР.","[KERNEL] загрузка защищённого ядра .......... OK","[CRYPTO] инициализация AES-256-GCM .......... OK","[KEYS] Android Keystore ..................... SEALED","[NET] проверка сетевого интерфейса .......... OK","[FIREWALL] правила доступа .................. LOADED","[VAULT] локальный контейнер ................. MOUNTED","[AUTH] шлюз авторизации ..................... READY","[SYS] все подсистемы отвечают."
+ )else listOf(
+  ">> WELCOME BACK, OPERATOR.","[KERNEL] loading hardened runtime ........... OK","[CRYPTO] initializing AES-256-GCM ........... OK","[KEYS] Android Keystore ..................... SEALED","[NET] probing network interface ............. OK","[FIREWALL] access control rules ............. LOADED","[VAULT] local encrypted volume .............. MOUNTED","[AUTH] authentication gateway ............... READY","[SYS] all subsystems responding."
+ )}
+ val printed=remember{mutableStateListOf<String>()};var progress by remember{mutableIntStateOf(0)};var cursor by remember{mutableStateOf(true)}
+ LaunchedEffect(Unit){while(true){cursor=!cursor;delay(380)}}
+ LaunchedEffect(lines){printed.clear();lines.forEachIndexed{index,line->printed.add("");line.forEach{ch->printed[index]=printed[index]+ch;delay(if(index==0)20 else 8)};progress=(index+1)*100/lines.size;delay(170)};delay(700);onFinished()}
+ Column(Modifier.fillMaxSize().padding(horizontal=13.dp,vertical=22.dp),verticalArrangement=Arrangement.Center){
+  Text("  ___ ____    __     __",color=Green,fontSize=16.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+  Text(" |_ _|  _ \\  \\ \\   / /",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
+  Text("  | || |_) |  \\ \\ / /",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
+  Text(" |___|____/    \\___/",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
+  Text(" [ IP_VAULT // SECURE STORAGE TERMINAL ]",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  Spacer(Modifier.height(18.dp));Text("┌─ BOOT SEQUENCE / AUTHENTICATED STARTUP",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace)
+  Column(Modifier.fillMaxWidth().background(Color(0xB8030905)).padding(9.dp)){printed.forEachIndexed{index,line->Text(line+(if(index==printed.lastIndex&&progress<100&&cursor)" ▌"else""),color=if(index==0)Green else Color(0xFFB4DCC0),fontSize=8.sp,fontFamily=FontFamily.Monospace,lineHeight=14.sp)}}
+  Spacer(Modifier.height(12.dp));Text("TRANSFER  ["+"█".repeat(progress/5)+"·".repeat(20-progress/5)+"]  "+progress+"%",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace)
+  Text(if(progress<100)"root@ipvault:~$ initializing..."else"root@ipvault:~$ access gateway ready_"+(if(cursor)"▌"else""),color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+ }
 }
-
 @Composable private fun MatrixRainBackground(modifier:Modifier=Modifier) {
  val t=rememberInfiniteTransition(label="crt"); val sweep by t.animateFloat(0f,1f,infiniteRepeatable(tween(5200,easing=LinearEasing)),label="scan")
  Canvas(modifier){drawRect(Color(0xFF010302));val c=24f;for(x in 0..(size.width/c).toInt())drawLine(Color(0xFF092014),Offset(x*c,0f),Offset(x*c,size.height),.45f);for(y in 0..(size.height/c).toInt())drawLine(Color(0xFF092014),Offset(0f,y*c),Offset(size.width,y*c),.45f);for(y in 0..(size.height/4).toInt())drawLine(Color(0x1200FF66),Offset(0f,y*4f),Offset(size.width,y*4f),.3f);val sy=size.height*sweep;drawLine(Color(0x4420E879),Offset(0f,sy),Offset(size.width,sy),1.2f);drawRect(Color(0x1000FF55),topLeft=Offset(0f,sy-20f),size=androidx.compose.ui.geometry.Size(size.width,40f))}
