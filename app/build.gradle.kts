@@ -70,5 +70,21 @@ val downloadMonocraftFont by tasks.registering {
         }
     }
 }
+// Package the exact generated launcher artwork (not a vector redraw).
+val launcherIconResDir = layout.buildDirectory.dir("generated/launcher-icon/res")
+val installLauncherIcon by tasks.registering {
+    val source = layout.projectDirectory.file("src/main/assets/launcher_icon.png.b64")
+    val output = launcherIconResDir.map { it.file("mipmap-nodpi/ic_launcher.png") }
+    inputs.file(source)
+    outputs.file(output)
+    doLast {
+        val target = output.get().asFile
+        target.parentFile.mkdirs()
+        target.writeBytes(java.util.Base64.getDecoder().decode(source.asFile.readText().trim()))
+    }
+}
 android.sourceSets.getByName("main").res.srcDir(monocraftResDir)
-tasks.named("preBuild").configure { dependsOn(downloadMonocraftFont) }
+android.sourceSets.getByName("main").res.srcDir(launcherIconResDir)
+tasks.named("preBuild").configure {
+    dependsOn(downloadMonocraftFont, installLauncherIcon)
+}
