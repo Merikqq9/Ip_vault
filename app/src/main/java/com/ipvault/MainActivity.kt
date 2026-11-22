@@ -183,3 +183,71 @@ private fun WhitelistScreen(
     }
 }
 @Composable private fun vaultFieldColors()=OutlinedTextFieldDefaults.colors(focusedBorderColor=Green,unfocusedBorderColor=Muted,focusedLabelColor=Green,cursorColor=Green)
+
+@Composable private fun EmergencyPasswordSetupScreen(onSave:(String)->Unit){
+    var password by remember{mutableStateOf("")}
+    var confirm by remember{mutableStateOf("")}
+    Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
+        Text("EMERGENCY ACCESS",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace)
+        Spacer(Modifier.height(12.dp))
+        Text("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist.",color=Muted)
+        Spacer(Modifier.height(18.dp))
+        OutlinedTextField(password,{password=it},label={Text("Backup password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(confirm,{confirm=it},label={Text("Repeat password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(16.dp))
+        Button(onClick={onSave(password)},enabled=password.length>=8&&password==confirm,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("SAVE BACKUP PASSWORD")}
+        if(password.isNotEmpty()&&password.length<8)Text("Use at least 8 characters.",color=Muted,fontSize=11.sp)
+        if(confirm.isNotEmpty()&&password!=confirm)Text("Passwords do not match.",color=Muted,fontSize=11.sp)
+    }
+}
+@Composable private fun EmergencyPasswordEntryScreen(onCancel:()->Unit,onUnlock:(String)->Unit){
+    var password by remember{mutableStateOf("")}
+    Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
+        Text("EMERGENCY ACCESS",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace)
+        Spacer(Modifier.height(12.dp))
+        Text("Enter your backup password to unlock IP VAULT.",color=Muted)
+        Spacer(Modifier.height(18.dp))
+        OutlinedTextField(password,{password=it},label={Text("Backup password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment=Alignment.CenterVertically){
+            TextButton(onClick=onCancel){Text("CANCEL",color=Muted)}
+            Spacer(Modifier.width(12.dp))
+            Button(onClick={onUnlock(password)},enabled=password.isNotEmpty(),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("UNLOCK")}
+        }
+    }
+}
+@Composable private fun AccessDeniedGestureScreen(onRecognized:()->Unit){
+    var points by remember{mutableStateOf<List<Offset>>(emptyList())}
+    Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+        Text("IP VAULT",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace)
+        Spacer(Modifier.height(12.dp))
+        Text("ACCESS DENIED",color=Color.White,fontSize=18.sp,fontFamily=FontFamily.Monospace)
+        Spacer(Modifier.height(8.dp))
+        Text("This IP address is not authorized.",color=Muted,fontSize=12.sp)
+        Spacer(Modifier.height(24.dp))
+        Text("Draw the letter M to open emergency access",color=Muted,fontSize=11.sp)
+        Spacer(Modifier.height(12.dp))
+        Canvas(Modifier.fillMaxWidth().height(230.dp).pointerInput(Unit){
+            detectDragGestures(onDragStart={points=listOf(it)},onDrag={change,_->points=points+change.position},onDragEnd={
+                if(isEmergencyM(points,size.width,size.height)){points=emptyList();onRecognized()}else points=emptyList()
+            })
+        }){
+            val path=Path()
+            points.forEachIndexed{index,p->if(index==0)path.moveTo(p.x,p.y)else path.lineTo(p.x,p.y)}
+            drawPath(path,color=Green,style=Stroke(width=7f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Text("IP VAULT // LOCKED",color=Muted,fontSize=9.sp,letterSpacing=2.sp)
+    }
+}
+private fun isEmergencyM(points:List<Offset>,width:Float,height:Float):Boolean{
+    if(points.size<12)return false
+    val minX=points.minOf{it.x};val maxX=points.maxOf{it.x};val minY=points.minOf{it.y};val maxY=points.maxOf{it.y}
+    if(maxX-minX<width*.35f||maxY-minY<height*.35f)return false
+    val targets=listOf(Offset(.08f,.92f),Offset(.08f,.08f),Offset(.5f,.62f),Offset(.92f,.08f),Offset(.92f,.92f))
+    val normalized=points.map{Offset((it.x-minX)/(maxX-minX),(it.y-minY)/(maxY-minY))}
+    var error=0.0
+    for(i in targets.indices){val p=normalized[(i*(normalized.size-1))/4];error+=kotlin.math.hypot((p.x-targets[i].x).toDouble(),(p.y-targets[i].y).toDouble())}
+    return error/targets.size<.36
+}
