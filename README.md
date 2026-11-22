@@ -61,8 +61,6 @@ IP VAULT — развивающийся проект. Проверяйте по�
 
 **Merikqq9**
 
-Проект: [github.com/Merikqq9/Ip_vault](https://github.com/Merikqq9/Ip_vault)
-
 ---
 
 <div align="center">
