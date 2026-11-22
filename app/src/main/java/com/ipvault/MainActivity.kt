@@ -11,6 +11,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -162,6 +166,9 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
   context.vaultStore.edit{it[VaultItems]=(it[VaultItems]?:emptySet())+item.encode()};message=tr("FILE ENCRYPTED AND SAVED")
  }catch(e:Exception){message=tr("IMPORT ERROR: ")+(e.localizedMessage?:"unknown")}}}
  MaterialTheme(colorScheme=darkColorScheme(primary=Green,background=Black,surface=Color(0xFF0D140F),onSurface=Color.White)){Surface(Modifier.fillMaxSize(),color=Black){
+ Box(Modifier.fillMaxSize()) {
+ MatrixRainBackground(Modifier.fillMaxSize())
+ Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
  when{
  checking->CenterStatus("IP VAULT",tr("CHECKING NETWORK"))
  firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false;setupEmergency=true}}
@@ -171,12 +178,37 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val safeName=item.name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"),"_").ifBlank{"file"};val out=File(context.cacheDir,"open_"+UUID.randomUUID().toString()+"_"+safeName);out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);val resolvedMime=if(item.mime.isNotBlank()&&item.mime!="application/octet-stream")item.mime else android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(item.name.substringAfterLast('.', "").lowercase()) ?: if(item.mime.startsWith("audio/"))"audio/*" else "*/*";val viewIntent=Intent(Intent.ACTION_VIEW).setDataAndType(uri,resolvedMime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);viewIntent.clipData=android.content.ClipData.newUri(context.contentResolver,item.name,uri);context.startActivity(Intent.createChooser(viewIntent,"Open with"))}catch(e:Exception){message=tr("OPEN ERROR: ")+(e.localizedMessage?:tr("No app can open this file"))}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
  else->HomeScreen(ip?: "UNVERIFIED",{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"})
  }
- message?.let{AlertDialog(onDismissRequest={message=null},confirmButton={TextButton(onClick={message=null}){Text(tr("OK"),color=Green)}},text={Text(it,color=Color.White)},containerColor=Color(0xFF101812))}
+ message?.let{AlertDialog(onDismissRequest={message=null},confirmButton={TextButton(onClick={message=null}){Text(tr("OK"),color=Green,fontFamily=FontFamily.Monospace)}},text={Text(it,color=Color.White,fontFamily=FontFamily.Monospace)},containerColor=Color(0xFF07130B))}
+ }
+ }
  }}
 }
 
+@Composable private fun MatrixRainBackground(modifier:Modifier=Modifier) {
+ val transition=rememberInfiniteTransition(label="matrix")
+ val progress by transition.animateFloat(0f,1f,infiniteRepeatable(tween(14000,easing=LinearEasing),RepeatMode.Restart),label="rain")
+ Canvas(modifier) {
+  drawRect(Black)
+  drawIntoCanvas { canvas ->
+   val paint=android.graphics.Paint().apply { isAntiAlias=true;typeface=android.graphics.Typeface.MONOSPACE;textSize=13f;color=android.graphics.Color.rgb(24,150,75) }
+   val chars="01アイウエオカキクケコサシスセソタチツテト<>[]{}#$%&"
+   val sx=19f;val sy=20f;val cols=(size.width/sx).toInt()+1;val rows=(size.height/sy).toInt()+2
+   for(c in 0 until cols) {
+    val offset=(progress*size.height*1.8f+c*47f)%(size.height+rows*sy)
+    for(r in 0 until rows) { val y=offset-r*sy
+     if(y>=0f&&y<=size.height) { paint.alpha=if(r==0)82 else 20+(r%4)*5;val i=(c*17+r*11+(progress*100).toInt()/9)%chars.length;canvas.nativeCanvas.drawText(chars[i].toString(),c*sx,y,paint) }
+    }
+   }
+  }
+ }
+}
+@Composable private fun TerminalLine(value:String,color:Color=Color.White) {
+ var count by remember(value){mutableIntStateOf(0)}
+ LaunchedEffect(value){count=0;for(i in 1..value.length){count=i;delay(16)}}
+ Text(value.take(count)+(if(count<value.length)"▌" else ""),color=color,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+}
 @Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
-@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
+@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.Center){Text("╔═ IP_VAULT ═╗",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
 @Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
     Column(Modifier.fillMaxSize().padding(start=20.dp,end=20.dp,top=38.dp,bottom=22.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
@@ -192,12 +224,12 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
         Column(Modifier.fillMaxWidth().padding(start=8.dp,top=8.dp,bottom=8.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Text("● ",color=Green,fontFamily=FontFamily.Monospace)
-                Text("SYSTEM ONLINE",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+                TerminalLine("> SYSTEM ONLINE",Green)
             }
             Spacer(Modifier.height(7.dp))
-            Text("ACCESS      : ${tr("AUTHORIZED")}",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
-            Text("ENCRYPTION  : AES-256-GCM",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
-            Text("NETWORK IP  : $ip",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+            TerminalLine("> ACCESS : ${tr("AUTHORIZED")}",Color.White)
+            TerminalLine("> ENCRYPTION : AES-256-GCM",Color.White)
+            TerminalLine("> NETWORK IP : $ip",Color.White)
         }
         Text("└──────────────────────────────────",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
         Spacer(Modifier.height(26.dp))
@@ -226,7 +258,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     BackHandler(onBack=back)
     val shown=items.filter{when(filter){"IMAGE"->it.mime.startsWith("image/");"VIDEO"->it.mime.startsWith("video/");"AUDIO"->it.mime.startsWith("audio/");"OTHER"->!(it.mime.startsWith("image/")||it.mime.startsWith("video/")||it.mime.startsWith("audio/"));else->true}}
     val title=when(filter){"IMAGE"->"PHOTOS";"VIDEO"->"VIDEO";"AUDIO"->"AUDIO";"OTHER"->"OTHER FILES";else->"ALL FILES"}
-    Column(Modifier.fillMaxSize().padding(start=18.dp,end=18.dp,top=36.dp,bottom=18.dp)) {
+    Column(Modifier.fillMaxSize().padding(start=18.dp,end=18.dp,top=14.dp,bottom=14.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,null,tint=Green)}
             Column(Modifier.weight(1f)) {
@@ -274,7 +306,7 @@ private fun WhitelistScreen(
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     BackHandler(enabled = section != "main") { section = "main" }
-    Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=24.dp)) {
+    Column(Modifier.fillMaxSize().padding(start=20.dp,end=20.dp,top=14.dp,bottom=14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { if (section == "main") back() else section = "main" }) {
                 Icon(Icons.Outlined.ArrowBack, null, tint = Green)
@@ -393,13 +425,13 @@ private fun WhitelistScreen(
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal=24.dp),
             horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-            Text("IP VAULT",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace)
+            Text("╔═ IP_VAULT ═╗",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace)
             Spacer(Modifier.height(12.dp))
-            Text(tr("ACCESS DENIED"),color=Color.White,fontSize=18.sp,fontFamily=FontFamily.Monospace)
+            Text("[ ACCESS DENIED ]",color=Color.White,fontSize=18.sp,fontFamily=FontFamily.Monospace)
             Spacer(Modifier.height(8.dp))
             Text(tr("This IP address is not authorized."),color=Muted,fontSize=12.sp)
             Spacer(Modifier.height(24.dp))
-            Text(tr("IP VAULT // LOCKED"),color=Muted,fontSize=9.sp,letterSpacing=2.sp)
+            Text("!! IP VAULT // LOCKED !!",color=Muted,fontSize=9.sp,letterSpacing=2.sp,fontFamily=FontFamily.Monospace)
         }
     }
 }
