@@ -1,21 +1,92 @@
-# IP VAULT
+<div align="center">
 
-Minimal Android starter built with Kotlin and Jetpack Compose.
+# 🔐 IP VAULT
 
-## Included in this first scaffold
-- Minimal black and emerald interface
-- First-run trust setup that adds the current public IP to the global allowlist
-- Public IP lookup on launch and local allowlist persistence with DataStore
-- Unknown IP or unavailable IP check blocks the app and finishes the Activity
-- Settings screen to add and remove allowed IPs
-- File picker UI placeholder
-- Screenshot blocking with FLAG_SECURE
-- GitHub Actions workflow to build a debug APK and upload it as an artifact
+### Личное хранилище файлов под контролем доступа по IP
 
-## Security status — not production-ready
-This is a project foundation, not yet a secure file vault. The file picker currently displays selected file names only; it does not copy or encrypt file contents. PIN authentication, AES-GCM file encryption with Android Keystore, emergency network recovery, and continuous network monitoring remain to be implemented and tested before storing sensitive files.
+Минималистичное Android-приложение для локального хранения файлов с шифрованием и дополнительным контролем доступа по публичному IP-адресу.
 
-The initial trust setup bootstraps the first allowed IP. Do not treat the current scaffold as protection for confidential data.
+[![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](https://www.android.com/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/compose)
+[![Build](https://github.com/Merikqq9/Ip_vault/actions/workflows/android.yml/badge.svg)](https://github.com/Merikqq9/Ip_vault/actions/workflows/android.yml)
 
-## Build
-The GitHub Actions workflow builds the debug APK on every push to main and on manual dispatch. Open the project in Android Studio with JDK 17 and Android SDK 35 to build locally.
+</div>
+
+---
+
+## ✨ О проекте
+
+**IP VAULT** — приватное файловое хранилище для Android, в котором сочетаются тёмный минималистичный интерфейс, локальное хранение данных и несколько уровней защиты.
+
+Доступ к приложению контролируется списком доверенных IP-адресов. Файлы шифруются перед сохранением, а настройки безопасности позволяют управлять резервным паролем и разрешёнными адресами.
+
+## 🛡️ Возможности
+
+- **Локальное хранилище** — файлы хранятся на устройстве, а не в облаке приложения.
+- **Шифрование файлов** — AES-256-GCM с использованием Android Keystore.
+- **Контроль IP** — список доверенных публичных IP-адресов с возможностью добавления и удаления.
+- **Резервный пароль** — дополнительный способ входа, если текущий IP не входит в список доверенных.
+- **Защита от перебора** — временная блокировка после нескольких неверных попыток ввода пароля.
+- **Скрытый аварийный доступ** — дополнительный сценарий восстановления доступа.
+- **Категории файлов** — отдельные разделы для фото, видео, аудио и других файлов.
+- **Два языка интерфейса** — русский и английский.
+- **Приватность экрана** — защита от обычного захвата скриншотов средствами Android.
+
+## 🔧 Технологии
+
+| Компонент | Использование |
+|---|---|
+| Kotlin | Основной язык |
+| Jetpack Compose | Интерфейс |
+| Android Keystore | Защищённое хранение ключевого материала |
+| AES-256-GCM | Шифрование файлов |
+| PBKDF2-HMAC-SHA256 | Получение ключа из резервного пароля |
+| Preferences DataStore | Локальные настройки |
+| GitHub Actions | Автоматическая сборка APK |
+
+## 📲 Установка
+
+Готовые debug-сборки публикуются как артефакты GitHub Actions:
+
+1. Откройте [последние запуски сборки](https://github.com/Merikqq9/Ip_vault/actions/workflows/android.yml).
+2. Выберите завершённый запуск со статусом **Success**.
+3. Внизу страницы найдите раздел **Artifacts** и скачайте APK.
+4. Установите APK на Android-устройство. При необходимости разрешите установку приложений из выбранного источника.
+
+## 🧱 Сборка проекта
+
+**Требования:** Android Studio, JDK 17 и Android SDK 35.
+
+```bash
+git clone https://github.com/Merikqq9/Ip_vault.git
+cd Ip_vault
+```
+
+Откройте проект в Android Studio и дождитесь синхронизации Gradle. Для локальной debug-сборки:
+
+```bash
+./gradlew assembleDebug
+```
+
+APK появится в `app/build/outputs/apk/debug/`.
+
+## 🔐 Важное замечание о безопасности
+
+IP VAULT — развивающийся проект. Проверяйте поведение приложения на своём устройстве и не рассматривайте его как сертифицированное средство защиты информации. Контроль по публичному IP зависит от сети и внешнего определения адреса; VPN, мобильные сети и смена подключения могут влиять на результат.
+
+При открытии файла во внешнем приложении расшифрованная временная копия может быть доступна этому приложению. Не используйте хранилище для критически важных данных без собственной оценки рисков и проверки реализации.
+
+## 👨‍💻 Автор
+
+**Merik**
+
+Проект: [github.com/Merikqq9/Ip_vault](https://github.com/Merikqq9/Ip_vault)
+
+---
+
+<div align="center">
+
+**IP VAULT** · Privacy starts with control.
+
+</div>
