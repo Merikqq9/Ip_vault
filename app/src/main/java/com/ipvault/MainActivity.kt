@@ -246,23 +246,46 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 }
 @Composable private fun AsciiEarth(){
     var frame by remember { mutableStateOf(0) }
-    LaunchedEffect(Unit){while(true){frame=(frame+1)%32;delay(115)}}
-    Text(text=asciiEarthFrame(frame*0.19634954f),color=Green,fontFamily=VaultFont,fontSize=7.sp,lineHeight=7.sp)
+    LaunchedEffect(Unit){while(true){frame=(frame+1)%48;delay(95)}}
+    Text(
+        text=asciiEarthFrame(frame*0.1308997f),
+        color=Green,
+        fontFamily=VaultFont,
+        fontSize=5.sp,
+        lineHeight=5.sp,
+        letterSpacing=0.sp
+    )
 }
 private fun asciiEarthFrame(rotation:Float):String{
-    val rows=13;val cols=21
+    // Dense character grid with corrected glyph aspect ratio for a round sphere.
+    val rows=25
+    val cols=41
+    val xRadius=19.5f
+    val yRadius=12f
     return buildString {
         for(y in 0 until rows){
             for(x in 0 until cols){
-                val nx=(x-(cols-1)/2f)/9.5f
-                val ny=(y-(rows-1)/2f)/5.7f
+                val nx=(x-(cols-1)/2f)/xRadius
+                val ny=(y-(rows-1)/2f)/yRadius
                 val radius=nx*nx+ny*ny
                 if(radius>1f){append(' ');continue}
-                val nz=kotlin.math.sqrt(1f-radius)
+                val nz=kotlin.math.sqrt((1f-radius).coerceAtLeast(0f))
                 val lon=kotlin.math.atan2(nx,nz)+rotation
-                val lat=kotlin.math.asin(ny)
-                val land=(kotlin.math.sin(lon*2.1f+lat*1.4f)+kotlin.math.cos(lon*3.3f-lat*2.2f)+kotlin.math.sin(lon*4.7f+lat*3.1f))*0.34f
-                val ch=if(land>0.28f) "@%#"[(x+y+kotlin.math.abs((rotation*5).toInt()))%3] else if(nz<0.25f) '.' else " .:-=+"[((x*3+y*5)%6)]
+                val lat=kotlin.math.asin(ny.coerceIn(-1f,1f))
+                val land=(
+                    kotlin.math.sin(lon*2.1f+lat*1.4f)+
+                    kotlin.math.cos(lon*3.3f-lat*2.2f)+
+                    kotlin.math.sin(lon*4.7f+lat*3.1f)+
+                    kotlin.math.cos(lon*7.2f-lat*4.4f)
+                )*0.25f
+                val light=(nx * -0.35f + ny * -0.25f + nz * 0.9f).coerceIn(0f,1f)
+                val ch=when{
+                    land>0.30f && light>0.35f -> "@%#"[(x+y+kotlin.math.abs((rotation*5).toInt()))%3]
+                    light<0.22f -> ' '
+                    light<0.42f -> '.'
+                    land>0.18f -> "##%@"[(x*3+y*5)%4]
+                    else -> " .:-=+*"[(light*7f).toInt().coerceIn(0,6)]
+                }
                 append(ch)
             }
             if(y<rows-1)append('\n')
