@@ -11,7 +11,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.edit
@@ -39,11 +46,34 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
 import java.util.UUID
+import java.security.SecureRandom
+import java.security.MessageDigest
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import javax.net.ssl.HttpsURLConnection
 
 private val Context.vaultStore by preferencesDataStore(name="vault_settings")
 private val Green=Color(0xFF20E879); private val Black=Color(0xFF050805); private val Muted=Color(0xFF819187)
 private val AllowedIps=stringSetPreferencesKey("allowed_ips"); private val VaultItems=stringSetPreferencesKey("vault_items")
+private val EmergencySalt=androidx.datastore.preferences.core.stringPreferencesKey("emergency_salt")
+private val EmergencyHash=androidx.datastore.preferences.core.stringPreferencesKey("emergency_hash")
+
+private fun createEmergencyRecord(password:String):Pair<String,String>{
+    val salt=ByteArray(16).also{SecureRandom().nextBytes(it)}
+    val spec=PBEKeySpec(password.toCharArray(),salt,210000,256)
+    val hash=try{SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded}finally{spec.clearPassword()}
+    return android.util.Base64.encodeToString(salt,android.util.Base64.NO_WRAP) to android.util.Base64.encodeToString(hash,android.util.Base64.NO_WRAP)
+}
+private fun checkEmergencyPassword(password:String,saltText:String?,hashText:String?):Boolean=try{
+    if(saltText==null||hashText==null)false else{
+        val salt=android.util.Base64.decode(saltText,android.util.Base64.NO_WRAP)
+        val expected=android.util.Base64.decode(hashText,android.util.Base64.NO_WRAP)
+        val spec=PBEKeySpec(password.toCharArray(),salt,210000,256)
+        val actual=try{SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded}finally{spec.clearPassword()}
+        MessageDigest.isEqual(actual,expected)
+    }
+}catch(_:Exception){false}
+
 private data class VaultItem(val id:String,val name:String,val mime:String){
  fun encode()=listOf(id,name,mime).joinToString("|"){android.util.Base64.encodeToString(it.toByteArray(),android.util.Base64.NO_WRAP)}
  companion object{fun decode(s:String):VaultItem?=try{val p=s.split("|");VaultItem(String(android.util.Base64.decode(p[0],0)),String(android.util.Base64.decode(p[1],0)),String(android.util.Base64.decode(p[2],0)))}catch(_:Exception){null}}
