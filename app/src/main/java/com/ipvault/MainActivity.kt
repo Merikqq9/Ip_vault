@@ -138,7 +138,7 @@ private val RussianTranslations = mapOf(
     " SECONDS" to " СЕК.",
     "INCORRECT PASSWORD. ATTEMPT " to "НЕВЕРНЫЙ ПАРОЛЬ. ПОПЫТКА ",
     " OF 5" to " ИЗ 5",
-    "WELCOME TO IP VAULT" to "ДОБРО ПОЖАЛОВАТЬ В IP VAULT",
+    "WELCOME TO IP VAULT" to "С ДОБРОМ В IP VAULT",
     "DEVICE STORAGE" to "ПАМЯТЬ УСТРОЙСТВА",
     "FREE" to "СВОБОДНО"
 )
@@ -591,16 +591,17 @@ private fun WhitelistScreen(
 
 @Composable private fun TypingNotice(message:String?,onFinished:()->Unit,modifier:Modifier=Modifier){
     var visible by remember { mutableIntStateOf(0) }
-    var fading by remember { mutableStateOf(false) }
     LaunchedEffect(message){
-        visible=0;fading=false
+        visible=0
         if(message!=null){
             while(visible<message.length){visible++;delay(28)}
-            delay(1500);fading=true;delay(260);onFinished()
+            delay(1500)
+            while(visible>0){visible--;delay(24)}
+            onFinished()
         }
     }
     if(message!=null) Text(text=message.take(visible),modifier=modifier,
-        color=Green.copy(alpha=if(fading)0f else 1f),fontFamily=VaultFont,fontSize=11.sp,
+        color=Green,fontFamily=VaultFont,fontSize=11.sp,
         textAlign=androidx.compose.ui.text.style.TextAlign.Center)
 }
 
