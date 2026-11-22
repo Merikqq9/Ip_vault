@@ -413,9 +413,9 @@ private fun WhitelistScreen(
             "main" -> {
                 Text(tr("SECURITY"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
                 Spacer(Modifier.height(12.dp))
-                VaultMenuRow(tr("CHANGE BACKUP PASSWORD"), Icons.Outlined.Lock) { section="password" }
-                VaultMenuRow(tr("IP WHITELIST"), Icons.Outlined.Shield) { section="ips" }
-                VaultMenuRow(tr("LANGUAGE"), Icons.Outlined.Language) { section="language" }
+                VaultMenuRow(tr("CHANGE BACKUP PASSWORD"), Icons.Outlined.Lock, click = { section="password" })
+                VaultMenuRow(tr("IP WHITELIST"), Icons.Outlined.Shield, click = { section="ips" })
+                VaultMenuRow(tr("LANGUAGE"), Icons.Outlined.Language, click = { section="language" })
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(color=Color(0xFF17231B))
                 Spacer(Modifier.height(14.dp))
@@ -439,8 +439,8 @@ private fun WhitelistScreen(
             "language" -> {
                 Text(tr("LANGUAGE"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
                 Spacer(Modifier.height(12.dp))
-                VaultMenuRow(tr("RUSSIAN"), Icons.Outlined.Language) { setLanguage("ru") }
-                VaultMenuRow(tr("ENGLISH"), Icons.Outlined.Language) { setLanguage("en") }
+                VaultMenuRow(tr("RUSSIAN"), Icons.Outlined.Language, click = { setLanguage("ru") })
+                VaultMenuRow(tr("ENGLISH"), Icons.Outlined.Language, click = { setLanguage("en") })
             }
             "ips" -> {
                 Text(tr("Manage IP addresses allowed to access your vault."), color=Muted, fontSize=12.sp)
