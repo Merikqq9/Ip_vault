@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -85,8 +86,8 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  val context=androidx.compose.ui.platform.LocalContext.current;val scope=rememberCoroutineScope()
  val prefs by context.vaultStore.data.collectAsState(initial=androidx.datastore.preferences.core.emptyPreferences())
  var savedWhitelist by remember { mutableStateOf<Set<String>?>(null) };val whitelist=savedWhitelist ?: (prefs[AllowedIps]?:emptySet());val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
- var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)};var setupEmergency by remember{mutableStateOf(false)};var emergencyUnlocked by remember{mutableStateOf(false)};var showEmergencyPassword by remember{mutableStateOf(false)}
- var page by remember{mutableStateOf("home")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
+ var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)};var setupEmergency by rememberSaveable{mutableStateOf(false)};var emergencyUnlocked by rememberSaveable{mutableStateOf(false)};var showEmergencyPassword by rememberSaveable{mutableStateOf(false)}
+ var page by rememberSaveable{mutableStateOf("home")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(Unit){val storedPrefs=withContext(Dispatchers.IO){context.vaultStore.data.first()};val stored=storedPrefs[AllowedIps]?:emptySet();savedWhitelist=stored;ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};firstRun=stored.isEmpty();setupEmergency=stored.isNotEmpty()&&storedPrefs[EmergencyHash]==null;checking=false}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)scope.launch{try{
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
@@ -136,65 +137,71 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 }
 @Composable
 private fun WhitelistScreen(
-    ips: Set<String>,
-    current: String?,
-    back: () -> Unit,
-    add: (String) -> Unit,
-    remove: (String) -> Unit,
+    ips: Set<String>, current: String?, back: () -> Unit,
+    add: (String) -> Unit, remove: (String) -> Unit,
     changePassword: (String,String) -> Unit
 ) {
+    var section by rememberSaveable { mutableStateOf("main") }
     var entry by remember { mutableStateOf("") }
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    BackHandler(enabled = section != "main") { section = "main" }
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, null, tint = Green) }
-            Text("SETTINGS", color = Green, fontSize = 20.sp, fontFamily = FontFamily.Monospace)
+            IconButton(onClick = { if (section == "main") back() else section = "main" }) {
+                Icon(Icons.Outlined.ArrowBack, null, tint = Green)
+            }
+            Text(when(section) { "password" -> "BACKUP PASSWORD"; "ips" -> "IP WHITELIST"; else -> "SETTINGS" },
+                color = Green, fontSize = 20.sp, fontFamily = FontFamily.Monospace)
         }
-        Spacer(Modifier.height(28.dp))
-        Text("IP WHITELIST", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = entry,
-            onValueChange = { entry = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("IPv4 / IPv6") },
-            singleLine = true,
-            colors = vaultFieldColors()
-        )
-        Spacer(Modifier.height(8.dp))
-        Button(
-            onClick = { add(entry.trim()); entry = "" },
-            enabled = entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),
-            colors = ButtonDefaults.buttonColors(containerColor = Green, contentColor = Black)
-        ) { Text("ADD IP") }
-        Spacer(Modifier.height(28.dp))
-        Text("EMERGENCY PASSWORD",color=Muted,fontSize=10.sp,letterSpacing=2.sp)
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(oldPassword,{oldPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("Current password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(newPassword,{newPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("New password (8+ characters)")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(confirmPassword,{confirmPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("Repeat new password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
-        Spacer(Modifier.height(8.dp))
-        Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""},enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("CHANGE BACKUP PASSWORD")}
-        Spacer(Modifier.height(20.dp))
-        LazyColumn(Modifier.weight(1f)) {
-            items(ips.sorted()) { address ->
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(address, color = Color.White, fontFamily = FontFamily.Monospace)
-                        Text(if (address == current) "CURRENT IP" else "ALLOWED", color = Green, fontSize = 10.sp)
-                    }
-                    IconButton(onClick = { remove(address) }) {
-                        Icon(Icons.Outlined.DeleteOutline, null, tint = Muted)
+        Spacer(Modifier.height(24.dp))
+        when(section) {
+            "main" -> {
+                Text("SECURITY", color=Muted, fontSize=10.sp, letterSpacing=2.sp)
+                Spacer(Modifier.height(12.dp))
+                VaultMenuRow("CHANGE BACKUP PASSWORD", Icons.Outlined.Lock) { section="password" }
+                VaultMenuRow("IP WHITELIST", Icons.Outlined.Shield) { section="ips" }
+                Spacer(Modifier.weight(1f))
+                HorizontalDivider(color=Color(0xFF17231B))
+                Spacer(Modifier.height(14.dp))
+                Text("AUTHOR", color=Muted, fontSize=10.sp, letterSpacing=2.sp)
+                Spacer(Modifier.height(5.dp))
+                Text("Merik", color=Color.White, fontSize=14.sp, fontFamily=FontFamily.Monospace)
+            }
+            "password" -> {
+                Text("Confirm your current password before setting a new one.", color=Muted, fontSize=12.sp)
+                Spacer(Modifier.height(18.dp))
+                OutlinedTextField(oldPassword,{oldPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("Current password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(newPassword,{newPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("New password (8+ characters)")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(confirmPassword,{confirmPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("Repeat new password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                Spacer(Modifier.height(16.dp))
+                Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""},
+                    enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword,
+                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("UPDATE PASSWORD")}
+            }
+            "ips" -> {
+                Text("Manage IP addresses allowed to access your vault.", color=Muted, fontSize=12.sp)
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(value=entry,onValueChange={entry=it},modifier=Modifier.fillMaxWidth(),label={Text("IPv4 / IPv6")},singleLine=true,colors=vaultFieldColors())
+                Spacer(Modifier.height(8.dp))
+                Button(onClick={add(entry.trim());entry=""},enabled=entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),
+                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("ADD IP")}
+                Spacer(Modifier.height(18.dp))
+                LazyColumn(Modifier.weight(1f)) {
+                    items(ips.sorted()) { address ->
+                        Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(address,color=Color.White,fontFamily=FontFamily.Monospace)
+                                Text(if(address==current)"CURRENT IP" else "ALLOWED",color=Green,fontSize=10.sp)
+                            }
+                            IconButton(onClick={remove(address)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}
+                        }
+                        HorizontalDivider(color=Color(0xFF17231B))
                     }
                 }
-                HorizontalDivider(color = Color(0xFF17231B))
             }
         }
     }
@@ -235,27 +242,31 @@ private fun WhitelistScreen(
     }
 }
 @Composable private fun AccessDeniedGestureScreen(onRecognized:()->Unit){
-    var points by remember{mutableStateOf<List<Offset>>(emptyList())}
-    Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-        Text("IP VAULT",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace)
-        Spacer(Modifier.height(12.dp))
-        Text("ACCESS DENIED",color=Color.White,fontSize=18.sp,fontFamily=FontFamily.Monospace)
-        Spacer(Modifier.height(8.dp))
-        Text("This IP address is not authorized.",color=Muted,fontSize=12.sp)
-        Spacer(Modifier.height(24.dp))
-        Text("Draw the letter M to open emergency access",color=Muted,fontSize=11.sp)
-        Spacer(Modifier.height(12.dp))
-        Canvas(Modifier.fillMaxWidth().height(230.dp).pointerInput(Unit){
-            detectDragGestures(onDragStart={points=listOf(it)},onDrag={change,_->points=points+change.position},onDragEnd={
-                if(isEmergencyM(points,size.width.toFloat(),size.height.toFloat())){points=emptyList();onRecognized()}else points=emptyList()
-            })
-        }){
-            val path=Path()
-            points.forEachIndexed{index,p->if(index==0)path.moveTo(p.x,p.y)else path.lineTo(p.x,p.y)}
-            drawPath(path,color=Green,style=Stroke(width=7f))
+    Box(
+        Modifier.fillMaxSize().pointerInput(onRecognized) {
+            val gesturePoints = mutableListOf<Offset>()
+            detectDragGestures(
+                onDragStart={start->gesturePoints.clear();gesturePoints.add(start)},
+                onDrag={change,_->gesturePoints.add(change.position)},
+                onDragEnd={
+                    if(isEmergencyM(gesturePoints.toList(),size.width.toFloat(),size.height.toFloat())) onRecognized()
+                    gesturePoints.clear()
+                },
+                onDragCancel={gesturePoints.clear()}
+            )
+        },
+        contentAlignment=Alignment.Center
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal=24.dp),
+            horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
+            Text("IP VAULT",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace)
+            Spacer(Modifier.height(12.dp))
+            Text("ACCESS DENIED",color=Color.White,fontSize=18.sp,fontFamily=FontFamily.Monospace)
+            Spacer(Modifier.height(8.dp))
+            Text("This IP address is not authorized.",color=Muted,fontSize=12.sp)
+            Spacer(Modifier.height(24.dp))
+            Text("IP VAULT // LOCKED",color=Muted,fontSize=9.sp,letterSpacing=2.sp)
         }
-        Spacer(Modifier.height(10.dp))
-        Text("IP VAULT // LOCKED",color=Muted,fontSize=9.sp,letterSpacing=2.sp)
     }
 }
 private fun isEmergencyM(points:List<Offset>,width:Float,height:Float):Boolean{
