@@ -281,7 +281,7 @@ private fun asciiEarthFrame(rotation:Float):String{
                 val light=(nx * -0.35f + ny * -0.25f + nz * 0.9f).coerceIn(0f,1f)
                 val ch=when{
                     land>0.30f && light>0.35f -> "@%#"[(x+y+kotlin.math.abs((rotation*5).toInt()))%3]
-                    light<0.22f -> ' '
+                    light<0.22f -> ':'
                     light<0.42f -> '.'
                     land>0.18f -> "##%@"[(x*3+y*5)%4]
                     else -> " .:-=+*"[(light*7f).toInt().coerceIn(0,6)]
