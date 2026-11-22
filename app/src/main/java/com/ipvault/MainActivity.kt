@@ -247,7 +247,7 @@ private fun WhitelistScreen(
         Spacer(Modifier.height(12.dp))
         Canvas(Modifier.fillMaxWidth().height(230.dp).pointerInput(Unit){
             detectDragGestures(onDragStart={points=listOf(it)},onDrag={change,_->points=points+change.position},onDragEnd={
-                if(isEmergencyM(points,size.width,size.height)){points=emptyList();onRecognized()}else points=emptyList()
+                if(isEmergencyM(points,size.width.toFloat(),size.height.toFloat())){points=emptyList();onRecognized()}else points=emptyList()
             })
         }){
             val path=Path()
