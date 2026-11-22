@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -36,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -263,34 +265,18 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 }
 
 @Composable private fun MatrixRainBackground(modifier:Modifier=Modifier) {
-    Canvas(modifier) {
-        drawRect(Color(0xFF020503))
-        val line = Color(0xFF0B2114)
-        for (y in 0..(size.height / 5f).toInt()) {
-            drawLine(line, Offset(0f, y * 5f), Offset(size.width, y * 5f), 0.35f)
-        }
-    }
+ val t=rememberInfiniteTransition(label="crt"); val sweep by t.animateFloat(0f,1f,infiniteRepeatable(tween(5200,easing=LinearEasing)),label="scan")
+ Canvas(modifier){drawRect(Color(0xFF010302));val c=24f;for(x in 0..(size.width/c).toInt())drawLine(Color(0xFF092014),Offset(x*c,0f),Offset(x*c,size.height),.45f);for(y in 0..(size.height/c).toInt())drawLine(Color(0xFF092014),Offset(0f,y*c),Offset(size.width,y*c),.45f);for(y in 0..(size.height/4).toInt())drawLine(Color(0x1200FF66),Offset(0f,y*4f),Offset(size.width,y*4f),.3f);val sy=size.height*sweep;drawLine(Color(0x4420E879),Offset(0f,sy),Offset(size.width,sy),1.2f);drawRect(Color(0x1000FF55),topLeft=Offset(0f,sy-20f),size=androidx.compose.ui.geometry.Size(size.width,40f))}
 }
-private val TerminalPanelColor = Color(0xFF07110A)
-private val TerminalLineColor = Color(0xFF183B25)
-private val TerminalAmber = Color(0xFFFFC857)
-
-@Composable private fun TerminalHeader(title:String, path:String="SYS://IP_VAULT") {
-    Column(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("●", color=Green, fontSize=10.sp)
-            Spacer(Modifier.width(7.dp))
-            Text("IP_VAULT", color=Green, fontSize=13.sp, fontFamily=FontFamily.Monospace, fontWeight=FontWeight.Bold, letterSpacing=2.sp)
-            Spacer(Modifier.weight(1f))
-            Text("SECURE NODE 01", color=Muted, fontSize=8.sp, fontFamily=FontFamily.Monospace, letterSpacing=1.sp)
-        }
-        Spacer(Modifier.height(9.dp))
-        HorizontalDivider(color=Green, thickness=1.dp)
-        Spacer(Modifier.height(7.dp))
-        Text(path + "  /  " + title.uppercase(), color=Muted, fontSize=9.sp, fontFamily=FontFamily.Monospace, letterSpacing=1.sp)
-        Spacer(Modifier.height(5.dp))
-        Text("┌─ " + title.uppercase() + " " + "─".repeat((22-title.length).coerceAtLeast(2)), color=Green, fontSize=15.sp, fontFamily=FontFamily.Monospace, fontWeight=FontWeight.Bold)
-    }
+@Composable private fun TerminalHeader(title:String,path:String="SYS://IP_VAULT") {
+ Column(Modifier.fillMaxWidth()){
+  Text("╔══════════════════════════════════════════════╗",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,maxLines=1)
+  Text("║ ▄▀█ █▀█   I P _ V A U L T   ▒▒ SECURE NODE  ║",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,maxLines=1,fontWeight=FontWeight.Bold)
+  Text("║ █▀█ █▀▄   ENCRYPTED STORAGE // NODE-01       ║",color=Color(0xFF9DC9AA),fontSize=8.sp,fontFamily=FontFamily.Monospace,maxLines=1)
+  Text("╚══════════════════════════════════════════════╝",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,maxLines=1)
+  Text("● LINK: ENCRYPTED  ● SESSION: ACTIVE  ● "+path,color=Muted,fontSize=7.sp,fontFamily=FontFamily.Monospace,maxLines=1)
+  Text("┌─ "+title.uppercase()+" "+"─".repeat((34-title.length).coerceAtLeast(2)),color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
+ }
 }
 @Composable private fun TerminalFooter(text:String="END OF SESSION") {
     Column(Modifier.fillMaxWidth()) {
@@ -299,38 +285,36 @@ private val TerminalAmber = Color(0xFFFFC857)
         Text("[" + text + "]  •  LOCAL ENCRYPTED STORAGE", color=Muted, fontSize=8.sp, fontFamily=FontFamily.Monospace, letterSpacing=1.sp)
     }
 }
-@Composable private fun TerminalPanel(title:String, modifier:Modifier=Modifier, content:@Composable ColumnScope.()->Unit) {
-    Column(modifier.fillMaxWidth().background(TerminalPanelColor).padding(12.dp)) {
-        Text("// " + title.uppercase(), color=Green, fontSize=9.sp, fontFamily=FontFamily.Monospace, letterSpacing=1.5.sp)
-        Spacer(Modifier.height(8.dp))
-        content()
-    }
+@Composable private fun TerminalPanel(title:String,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
+ Column(modifier.fillMaxWidth()){
+  Text("┌──[ "+title.uppercase()+" ]"+"─".repeat((28-title.length).coerceAtLeast(2)),color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace)
+  Column(Modifier.fillMaxWidth().padding(start=7.dp,top=7.dp,bottom=7.dp)){content()}
+  Text("└"+"─".repeat(42),color=Color(0xFF245A38),fontSize=8.sp,fontFamily=FontFamily.Monospace)
+ }
 }
-@Composable private fun TerminalButton(label:String, modifier:Modifier=Modifier, enabled:Boolean=true, danger:Boolean=false, onClick:()->Unit) {
-    val tint = if(danger) Color(0xFFFF6B6B) else Green
-    Row(modifier.fillMaxWidth().border(1.dp, if(enabled)tint else Muted).clickable(enabled=enabled,onClick=onClick).padding(horizontal=12.dp, vertical=13.dp), verticalAlignment=Alignment.CenterVertically) {
-        Text(if(enabled) ">" else "×", color=if(enabled)tint else Muted, fontFamily=FontFamily.Monospace, fontSize=13.sp)
-        Spacer(Modifier.width(10.dp))
-        Text(label.uppercase(), color=if(enabled)tint else Muted, fontFamily=FontFamily.Monospace, fontSize=11.sp, fontWeight=FontWeight.Bold, modifier=Modifier.weight(1f))
-        Text(if(enabled)"[ EXEC ]" else "[ LOCK ]", color=Muted, fontFamily=FontFamily.Monospace, fontSize=8.sp)
-    }
+@Composable private fun TerminalButton(label:String,modifier:Modifier=Modifier,enabled:Boolean=true,danger:Boolean=false,onClick:()->Unit){
+ val tint=if(danger)Color(0xFFFF625D)else Green
+ Row(modifier.fillMaxWidth().clickable(enabled=enabled,onClick=onClick).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
+  Text("root@ipvault:~$",color=Muted,fontSize=9.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(7.dp))
+  Text(label.lowercase().replace(" ","_"),color=if(enabled)tint else Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+  Spacer(Modifier.weight(1f));Text(if(enabled)"[ ENTER ↵ ]" else "[ LOCKED ]",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+ }
 }
-@Composable private fun TerminalMenuRow(label:String, index:String, detail:String="", onClick:()->Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=3.dp)) {
-        Row(Modifier.fillMaxWidth().background(TerminalPanelColor).padding(horizontal=11.dp, vertical=13.dp), verticalAlignment=Alignment.CenterVertically) {
-            Text("[" + index + "]", color=Green, fontSize=11.sp, fontFamily=FontFamily.Monospace)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(label.uppercase(), color=Color(0xFFE3F5E8), fontSize=11.sp, fontFamily=FontFamily.Monospace, fontWeight=FontWeight.Bold)
-                if(detail.isNotEmpty()) Text(detail, color=Muted, fontSize=8.sp, fontFamily=FontFamily.Monospace)
-            }
-            Text(" >", color=Green, fontSize=16.sp, fontFamily=FontFamily.Monospace)
-        }
-        HorizontalDivider(color=TerminalLineColor)
-    }
+@Composable private fun TerminalMenuRow(label:String,index:String,detail:String="",onClick:()->Unit){
+ Column(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=3.dp)){
+  Row(verticalAlignment=Alignment.CenterVertically){Text("├─ ["+index+"]",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(8.dp));Text(label.uppercase(),color=Color(0xFFD8F5DF),fontSize=10.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("▶",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)}
+  if(detail.isNotEmpty())Text("│     "+detail,color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+ }
 }
-@Composable private fun TerminalField(value:String, onValueChange:(String)->Unit, label:String, password:Boolean=false, keyboardOptions:KeyboardOptions=KeyboardOptions.Default) {
-    OutlinedTextField(value=value,onValueChange=onValueChange,modifier=Modifier.fillMaxWidth(),label={Text(label.uppercase(),fontFamily=FontFamily.Monospace,fontSize=10.sp)},singleLine=true,visualTransformation=if(password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,keyboardOptions=keyboardOptions,colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Green,unfocusedBorderColor=TerminalLineColor,focusedLabelColor=Green,unfocusedLabelColor=Muted,cursorColor=Green,focusedTextColor=Color.White,unfocusedTextColor=Color.White),textStyle=androidx.compose.ui.text.TextStyle(fontFamily=FontFamily.Monospace,fontSize=13.sp))
+@Composable private fun TerminalField(value:String,onValueChange:(String)->Unit,label:String,password:Boolean=false,keyboardOptions:KeyboardOptions=KeyboardOptions.Default){
+ Column(Modifier.fillMaxWidth().padding(vertical=4.dp)){
+  Text("# "+label.uppercase(),color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  Row(Modifier.fillMaxWidth().padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
+   Text("root@ipvault:~$ ",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+   BasicTextField(value=value,onValueChange=onValueChange,singleLine=true,visualTransformation=if(password)PasswordVisualTransformation()else androidx.compose.ui.text.input.VisualTransformation.None,keyboardOptions=keyboardOptions,textStyle=androidx.compose.ui.text.TextStyle(color=Color(0xFFE2FFE8),fontFamily=FontFamily.Monospace,fontSize=12.sp),cursorBrush=SolidColor(Green),modifier=Modifier.weight(1f))
+  }
+  Text("─".repeat(42),color=Color(0xFF245A38),fontSize=8.sp,fontFamily=FontFamily.Monospace)
+ }
 }
 @Composable private fun TerminalPage(title:String, path:String, back:(()->Unit)?=null, content:@Composable ColumnScope.()->Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal=18.dp, vertical=14.dp)) {
@@ -377,26 +361,20 @@ private val TerminalAmber = Color(0xFFFFC857)
         if(ip==null) Text("! NETWORK OFFLINE — CONNECT AND RESTART",color=TerminalAmber,fontSize=9.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.padding(top=12.dp))
     }
 }
-@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit) {
-    TerminalPage("COMMAND CENTER","SYS://ROOT") {
-        TerminalPanel("SYSTEM DIAGNOSTICS") {
-            TerminalLine("STATE       : ONLINE",Green)
-            TerminalLine("ACCESS      : " + tr("AUTHORIZED"),Green)
-            TerminalLine("CIPHER      : AES-256-GCM")
-            TerminalLine("NETWORK     : " + ip)
-            TerminalLine("STORAGE     : LOCAL / ENCRYPTED")
-        }
-        Spacer(Modifier.height(15.dp))
-        Text("$ vault --list-sectors",color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
-        Spacer(Modifier.height(7.dp))
-        TerminalMenuRow(tr("ALL FILES"),"01","Browse encrypted objects",all)
-        TerminalMenuRow(tr("PHOTOS"),"02","IMAGE/*",images)
-        TerminalMenuRow(tr("VIDEO"),"03","VIDEO/*",videos)
-        TerminalMenuRow(tr("AUDIO"),"04","AUDIO/*",audio)
-        TerminalMenuRow(tr("DOCUMENTS & OTHER"),"05","UNCLASSIFIED OBJECTS",other)
-        Spacer(Modifier.height(12.dp))
-        TerminalButton("OPEN SYSTEM CONFIGURATION",onClick=settings)
-    }
+@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
+ val pulse=rememberInfiniteTransition(label="telemetry");val tick by pulse.animateFloat(0f,1f,infiniteRepeatable(tween(1200,easing=LinearEasing),RepeatMode.Reverse),label="tick")
+ TerminalPage("GHOST TERMINAL","SYS://ROOT"){
+  TerminalPanel("LIVE SYSTEM TELEMETRY"){
+   TerminalLine(" [●] CORE ................. ONLINE",Green);TerminalLine(" [●] AES-256-GCM .......... READY",Green);TerminalLine(" [●] ANDROID KEYSTORE ..... SEALED",Green);TerminalLine(" [●] NETWORK .............. "+ip,Color(0xFFB8D8C0));TerminalLine(" [●] LOCAL VAULT .......... ENCRYPTED",Green);TerminalLine(" ["+(if(tick>.5f)"●" else " ")+"] SESSION .............. ACTIVE",Green)
+  }
+  Spacer(Modifier.height(8.dp))
+  TerminalPanel("NETWORK TOPOLOGY // LOCAL NODE"){
+   TerminalLine("                 .──────────────.",Color(0xFF69B987));TerminalLine("                 │  IP_VAULT    │",Green);TerminalLine("                 │  127.0.0.1   │",Green);TerminalLine("                 '──────┬───────'",Color(0xFF69B987));TerminalLine("          ┌─────────────┼─────────────┐",Muted);TerminalLine("          │             │             │",Muted);TerminalLine("      [CIPHER]       [FIREWALL]     [STORAGE]",Green);TerminalLine("          │             │             │",Muted);TerminalLine("       AES-256       IP FILTER      LOCAL FS",Color(0xFF9DC9AA)
+  }
+  Spacer(Modifier.height(8.dp));Text("root@ipvault:~$ vault --list-sectors",color=Color(0xFFB8D8C0),fontSize=9.sp,fontFamily=FontFamily.Monospace)
+  TerminalMenuRow("ALL ENCRYPTED OBJECTS","01","vault://files",all);TerminalMenuRow("IMAGE SECTOR","02","vault://media/images",images);TerminalMenuRow("VIDEO SECTOR","03","vault://media/video",videos);TerminalMenuRow("AUDIO SECTOR","04","vault://media/audio",audio);TerminalMenuRow("DOCUMENTS / OTHER","05","vault://data/misc",other)
+  Spacer(Modifier.height(8.dp));TerminalButton("open system configuration",onClick=settings)
+ }
 }
 @Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit) {
     BackHandler(onBack=back)
