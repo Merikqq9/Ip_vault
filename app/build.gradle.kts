@@ -75,7 +75,7 @@ val downloadMonocraftFont by tasks.registering {
 val launcherIconResDir = layout.buildDirectory.dir("generated/launcher-icon/res")
 val installLauncherIcon by tasks.registering {
     val source = layout.projectDirectory.file("src/main/assets/launcher_icon.png.b64")
-    val output = launcherIconResDir.map { it.file("mipmap-nodpi/ic_launcher_foreground.png") }
+    val output = launcherIconResDir.map { it.file("drawable-nodpi/launcher_art.png") }
     inputs.file(source)
     outputs.file(output)
     doLast {
