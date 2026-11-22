@@ -216,8 +216,33 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  }
 }
 @Composable private fun MatrixRainBackground(modifier:Modifier=Modifier) {
- val t=rememberInfiniteTransition(label="crt"); val sweep by t.animateFloat(0f,1f,infiniteRepeatable(tween(5200,easing=LinearEasing)),label="scan")
- Canvas(modifier){drawRect(Color(0xFF010302));val c=24f;for(x in 0..(size.width/c).toInt())drawLine(Color(0xFF092014),Offset(x*c,0f),Offset(x*c,size.height),.45f);for(y in 0..(size.height/c).toInt())drawLine(Color(0xFF092014),Offset(0f,y*c),Offset(size.width,y*c),.45f);for(y in 0..(size.height/4).toInt())drawLine(Color(0x1200FF66),Offset(0f,y*4f),Offset(size.width,y*4f),.3f);val sy=size.height*sweep;drawLine(Color(0x4420E879),Offset(0f,sy),Offset(size.width,sy),1.2f);drawRect(Color(0x1000FF55),topLeft=Offset(0f,sy-20f),size=androidx.compose.ui.geometry.Size(size.width,40f))}
+ val transition=rememberInfiniteTransition(label="matrix-rain")
+ val phase by transition.animateFloat(0f,1f,infiniteRepeatable(tween(9000,easing=LinearEasing)),label="rain-phase")
+ val glyphs=listOf("ア","イ","ウ","エ","オ","カ","キ","ク","ケ","コ","サ","シ","ス","セ","ソ","タ","チ","ツ","テ","ト","ナ","ニ","ヌ","ネ","ノ","ハ","ヒ","フ","ヘ","ホ","マ","ミ","ム","メ","モ","ヤ","ユ","ヨ","ラ","リ","ル","レ","ロ","ワ","ン","零","一","二","三","四","五","六","七","八","九")
+ Canvas(modifier) {
+  drawRect(Color(0xFF010302))
+  val native=drawContext.canvas.nativeCanvas
+  val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+   typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.NORMAL)
+   textSize=22f
+  }
+  val step=30f
+  val columns=(size.width/step).toInt()+1
+  val rows=(size.height/step).toInt()+2
+  for(column in 0 until columns) {
+   val speed=0.45f+(column%5)*0.13f
+   val offset=(column*73)%rows
+   val head=((phase*rows*2*speed+offset)% (rows+8)).toInt()
+   for(tail in 0..9) {
+    val row=head-tail
+    if(row<0||row>=rows) continue
+    val glyph=glyphs[(column*11+row*7+tail*3)%glyphs.size]
+    val alpha=if(tail==0)210 else (105-tail*9).coerceAtLeast(18)
+    paint.color=if(tail==0)android.graphics.Color.argb(235,170,255,190) else android.graphics.Color.argb(alpha,0,190,75)
+    native.drawText(glyph,column*step+4f,row*step+step,paint)
+   }
+  }
+ }
 }
 @Composable private fun TerminalHeader(title:String,path:String="SYS://IP_VAULT") {
  Column(Modifier.fillMaxWidth()){
@@ -245,9 +270,10 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 @Composable private fun TerminalButton(label:String,modifier:Modifier=Modifier,enabled:Boolean=true,danger:Boolean=false,onClick:()->Unit){
  val tint=if(danger)Color(0xFFFF625D)else Green
  Row(modifier.fillMaxWidth().clickable(enabled=enabled,onClick=onClick).padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically){
-  Text("root@ipvault:~$",color=Muted,fontSize=17.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(7.dp))
-  Text(label.lowercase().replace(" ","_"),color=if(enabled)tint else Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-  Spacer(Modifier.weight(1f));Text(if(enabled)"[ ENTER ↵ ]" else "[ LOCKED ]",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Text("root@ipvault:~$",color=Muted,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false);Spacer(Modifier.width(5.dp))
+  Text(label.lowercase().replace(" ","_"),modifier=Modifier.weight(1f),color=if(enabled)tint else Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+  Spacer(Modifier.width(5.dp))
+  Text(if(enabled)"[ ENTER ↵ ]" else "[ LOCKED ]",modifier=Modifier.width(88.dp),color=Muted,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false,textAlign=androidx.compose.ui.text.style.TextAlign.End)
  }
 }
 @Composable private fun TerminalMenuRow(label:String,index:String,detail:String="",onClick:()->Unit){
