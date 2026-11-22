@@ -180,7 +180,7 @@ private fun WhitelistScreen(
         Spacer(Modifier.height(8.dp))
         Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""},enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("CHANGE BACKUP PASSWORD")}
         Spacer(Modifier.height(20.dp))
-        LazyColumn {
+        LazyColumn(Modifier.weight(1f)) {
             items(ips.sorted()) { address ->
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 12.dp),
