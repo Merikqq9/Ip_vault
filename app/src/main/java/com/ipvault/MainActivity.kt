@@ -94,11 +94,11 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  when{
  checking->CenterStatus("IP VAULT","CHECKING NETWORK")
  firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false;setupEmergency=true}}
- setupEmergency->EmergencyPasswordSetupScreen{password->scope.launch{val record=withContext(Dispatchers.Default){createEmergencyRecord(password)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};setupEmergency=false}}
+ setupEmergency&&ip!=null&&ip in whitelist->EmergencyPasswordSetupScreen{password->scope.launch{val record=withContext(Dispatchers.Default){createEmergencyRecord(password)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};setupEmergency=false}}
  (ip==null||ip !in whitelist)&&!emergencyUnlocked->if(showEmergencyPassword)EmergencyPasswordEntryScreen(onCancel={showEmergencyPassword=false}){password->scope.launch{val p=context.vaultStore.data.first();val valid=withContext(Dispatchers.Default){checkEmergencyPassword(password,p[EmergencySalt],p[EmergencyHash])};if(valid){emergencyUnlocked=true;showEmergencyPassword=false;page="home"}else message="INCORRECT EMERGENCY PASSWORD"}}else AccessDeniedGestureScreen{showEmergencyPassword=true}
- page=="settings"->WhitelistScreen(whitelist,ip,{page="home"},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist+v};savedWhitelist=whitelist+v}},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist-v};savedWhitelist=whitelist-v}})
+ page=="settings"->WhitelistScreen(whitelist,ip,{page="home"},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist+v};savedWhitelist=whitelist+v}},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist-v};savedWhitelist=whitelist-v}},{old,new->scope.launch{val p=context.vaultStore.data.first();val valid=withContext(Dispatchers.Default){checkEmergencyPassword(old,p[EmergencySalt],p[EmergencyHash])};if(valid){val record=withContext(Dispatchers.Default){createEmergencyRecord(new)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};message="EMERGENCY PASSWORD UPDATED"}else message="INCORRECT CURRENT PASSWORD"}})
  page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val safeName=item.name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"),"_").ifBlank{"file"};val out=File(context.cacheDir,"open_"+UUID.randomUUID().toString()+"_"+safeName);out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);val resolvedMime=if(item.mime.isNotBlank()&&item.mime!="application/octet-stream")item.mime else android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(item.name.substringAfterLast('.', "").lowercase()) ?: if(item.mime.startsWith("audio/"))"audio/*" else "*/*";val viewIntent=Intent(Intent.ACTION_VIEW).setDataAndType(uri,resolvedMime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);viewIntent.clipData=android.content.ClipData.newUri(context.contentResolver,item.name,uri);context.startActivity(Intent.createChooser(viewIntent,"Open with"))}catch(e:Exception){message="OPEN ERROR: "+(e.localizedMessage?:"No app can open this file")}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
- else->ip?.let { currentIp -> HomeScreen(currentIp,{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"}) } ?: CenterStatus("IP VAULT","CHECKING NETWORK")
+ else->HomeScreen(ip?: "UNVERIFIED",{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"})
  }
  message?.let{AlertDialog(onDismissRequest={message=null},confirmButton={TextButton(onClick={message=null}){Text("OK",color=Green)}},text={Text(it,color=Color.White)},containerColor=Color(0xFF101812))}
  }}
@@ -138,9 +138,13 @@ private fun WhitelistScreen(
     current: String?,
     back: () -> Unit,
     add: (String) -> Unit,
-    remove: (String) -> Unit
+    remove: (String) -> Unit,
+    changePassword: (String,String) -> Unit
 ) {
     var entry by remember { mutableStateOf("") }
+    var oldPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, null, tint = Green) }
@@ -163,6 +167,16 @@ private fun WhitelistScreen(
             enabled = entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),
             colors = ButtonDefaults.buttonColors(containerColor = Green, contentColor = Black)
         ) { Text("ADD IP") }
+        Spacer(Modifier.height(28.dp))
+        Text("EMERGENCY PASSWORD",color=Muted,fontSize=10.sp,letterSpacing=2.sp)
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(oldPassword,{oldPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("Current password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(newPassword,{newPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("New password (8+ characters)")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(confirmPassword,{confirmPassword=it},modifier=Modifier.fillMaxWidth(),label={Text("Repeat new password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        Spacer(Modifier.height(8.dp))
+        Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""},enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("CHANGE BACKUP PASSWORD")}
         Spacer(Modifier.height(20.dp))
         LazyColumn {
             items(ips.sorted()) { address ->
