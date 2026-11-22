@@ -364,7 +364,7 @@ private val TerminalAmber = Color(0xFFFFC857)
     var confirmPassword by remember{mutableStateOf("")}
     BackHandler(enabled=section!="main"){section="main"}
     val title=when(section){"password"->tr("BACKUP PASSWORD");"ips"->tr("IP WHITELIST");"language"->tr("LANGUAGE");else->tr("SETTINGS")}
-    TerminalPage(title,"SYS://CONFIG",if(section=="main")back else {{section="main"}}) {
+    TerminalPage(title,"SYS://CONFIG",if(section=="main") back else ({ section="main" })) {
         when(section) {
             "main" -> {
                 TerminalPanel("CONFIGURATION MODULES") {
