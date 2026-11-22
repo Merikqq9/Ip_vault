@@ -131,6 +131,8 @@ private fun tr(value:String):String =
 
 private val LanguageKey=androidx.datastore.preferences.core.stringPreferencesKey("app_language")
 private val Green=Color(0xFF20E879); private val Black=Color(0xFF050805); private val Muted=Color(0xFF819187)
+private val TerminalLineColor=Color(0xFF245A38)
+private val TerminalAmber=Color(0xFFFFB347)
 private val AllowedIps=stringSetPreferencesKey("allowed_ips"); private val VaultItems=stringSetPreferencesKey("vault_items")
 private val EmergencySalt=androidx.datastore.preferences.core.stringPreferencesKey("emergency_salt")
 private val EmergencyHash=androidx.datastore.preferences.core.stringPreferencesKey("emergency_hash")
@@ -316,7 +318,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
   }
   Spacer(Modifier.height(8.dp))
   TerminalPanel("NOC WALL // NETWORK TOPOLOGY"){
-   TerminalLine("              .-------------------.",Color(0xFF69B987));TerminalLine("              |   IP_VAULT NODE   |",Green);TerminalLine("              |   127.0.0.1       |",Green);TerminalLine("              '---------+---------'",Color(0xFF69B987));TerminalLine("          .-------------+-------------.",Muted);TerminalLine("          |             |             |",Muted);TerminalLine("      [CIPHER]       [FIREWALL]     [STORAGE]",Green);TerminalLine("          |             |             |",Muted);TerminalLine("       AES-256       IP FILTER      LOCAL FS",Color(0xFF9DC9AA)
+   TerminalLine("              .-------------------.",Color(0xFF69B987));TerminalLine("              |   IP_VAULT NODE   |",Green);TerminalLine("              |   127.0.0.1       |",Green);TerminalLine("              '---------+---------'",Color(0xFF69B987));TerminalLine("          .-------------+-------------.",Muted);TerminalLine("          |             |             |",Muted);TerminalLine("      [CIPHER]       [FIREWALL]     [STORAGE]",Green);TerminalLine("          |             |             |",Muted);TerminalLine("       AES-256       IP FILTER      LOCAL FS",Color(0xFF9DC9AA))
   }
   Spacer(Modifier.height(8.dp))
   TerminalPanel("NIGHT SHIFT // EVENT STREAM"){
