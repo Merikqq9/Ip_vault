@@ -474,17 +474,85 @@ private fun WhitelistScreen(
                 Text("Merik", color=Color.White, fontSize=14.sp, fontFamily=VaultFont)
             }
             "password" -> {
+                var activePasswordField by rememberSaveable { mutableStateOf("current") }
+                var textMode by rememberSaveable { mutableStateOf(false) }
+                fun appendPasswordDigit(digit: String) {
+                    when (activePasswordField) {
+                        "current" -> if (oldPassword.length < 128) oldPassword += digit
+                        "new" -> if (newPassword.length < 128) newPassword += digit
+                        else -> if (confirmPassword.length < 128) confirmPassword += digit
+                    }
+                }
+                fun erasePasswordDigit() {
+                    when (activePasswordField) {
+                        "current" -> if (oldPassword.isNotEmpty()) oldPassword = oldPassword.dropLast(1)
+                        "new" -> if (newPassword.isNotEmpty()) newPassword = newPassword.dropLast(1)
+                        else -> if (confirmPassword.isNotEmpty()) confirmPassword = confirmPassword.dropLast(1)
+                    }
+                }
                 Text(tr("Confirm your current password before setting a new one."), color=Muted, fontSize=12.sp)
-                Spacer(Modifier.height(18.dp))
-                OutlinedTextField(oldPassword,{oldPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("Current password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                Spacer(Modifier.height(12.dp))
+                if (textMode) {
+                    OutlinedTextField(oldPassword,{oldPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("Current password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedTextField(newPassword,{newPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("New password (8+ characters)"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedTextField(confirmPassword,{confirmPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("Repeat new password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+                    TextButton(onClick={textMode=false}) { Text("123",color=Green,fontFamily=VaultFont) }
+                } else {
+                    @Composable fun passwordSlot(value:String,label:String,field:String) {
+                        Box(Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value="• ".repeat(value.length).trim(), onValueChange={}, readOnly=true,
+                                modifier=Modifier.fillMaxWidth(), label={Text(tr(label))}, singleLine=true,
+                                colors=vaultFieldColors(),
+                                textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+                            )
+                            Box(Modifier.matchParentSize().clickable { activePasswordField=field })
+                        }
+                    }
+                    passwordSlot(oldPassword,"Current password","current")
+                    Spacer(Modifier.height(6.dp))
+                    passwordSlot(newPassword,"New password (8+ characters)","new")
+                    Spacer(Modifier.height(6.dp))
+                    passwordSlot(confirmPassword,"Repeat new password","confirm")
+                    Spacer(Modifier.height(9.dp))
+                    val keypadRows=listOf(listOf("1","2","3"),listOf("4","5","6"),listOf("7","8","9"))
+                    Column(Modifier.fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                        keypadRows.forEach { row ->
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                                row.forEach { digit ->
+                                    Button(onClick={appendPasswordDigit(digit)},modifier=Modifier.weight(1f).height(43.dp),
+                                        shape=androidx.compose.foundation.shape.CircleShape,
+                                        colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF101B14),contentColor=Green),
+                                        border=BorderStroke(1.dp,Green.copy(alpha=.55f)),
+                                        elevation=ButtonDefaults.buttonElevation(defaultElevation=3.dp,pressedElevation=0.dp)
+                                    ) { Text(digit,fontFamily=VaultFont,fontSize=18.sp) }
+                                }
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                            OutlinedButton(onClick={textMode=true},modifier=Modifier.weight(1f).height(43.dp),
+                                shape=androidx.compose.foundation.shape.CircleShape,border=BorderStroke(1.dp,Muted.copy(alpha=.55f))
+                            ) { Text("ABC",fontFamily=VaultFont,color=Muted,fontSize=11.sp) }
+                            Button(onClick={appendPasswordDigit("0")},modifier=Modifier.weight(1f).height(43.dp),
+                                shape=androidx.compose.foundation.shape.CircleShape,
+                                colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF101B14),contentColor=Green),
+                                border=BorderStroke(1.dp,Green.copy(alpha=.55f))
+                            ) { Text("0",fontFamily=VaultFont,fontSize=18.sp) }
+                            OutlinedButton(onClick={erasePasswordDigit()},modifier=Modifier.weight(1f).height(43.dp),
+                                shape=androidx.compose.foundation.shape.CircleShape,border=BorderStroke(1.dp,Muted.copy(alpha=.55f))
+                            ) { Text("⌫",fontFamily=VaultFont,color=Muted,fontSize=17.sp) }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(newPassword,{newPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("New password (8+ characters)"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(confirmPassword,{confirmPassword=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("Repeat new password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
-                Spacer(Modifier.height(16.dp))
-                Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""},
+                Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword="";activePasswordField="current"},
                     enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword,
-                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("UPDATE PASSWORD"))}
+                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),
+                    border=BorderStroke(1.dp,Green.copy(alpha=.45f)),
+                    elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)
+                ) { Text(tr("UPDATE PASSWORD")) }
             }
             "language" -> {
                 Text(tr("LANGUAGE"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
@@ -553,7 +621,7 @@ private fun WhitelistScreen(
         }else{
             Box(Modifier.fillMaxWidth()){
                 OutlinedTextField(
-                    value=if(activeField=="password")"• ".repeat(password.length).trim() else "",
+                    value="• ".repeat(password.length).trim(),
                     onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth(),
                     label={Text(tr("Backup password"))},singleLine=true,colors=vaultFieldColors(),
                     textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
@@ -563,7 +631,7 @@ private fun WhitelistScreen(
             Spacer(Modifier.height(7.dp))
             Box(Modifier.fillMaxWidth()){
                 OutlinedTextField(
-                    value=if(activeField=="confirm")"• ".repeat(confirm.length).trim() else "",
+                    value="• ".repeat(confirm.length).trim(),
                     onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth(),
                     label={Text(tr("Repeat new password"))},singleLine=true,colors=vaultFieldColors(),
                     textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
