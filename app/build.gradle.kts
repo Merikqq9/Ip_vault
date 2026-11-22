@@ -1,3 +1,6 @@
+import java.net.URL
+import java.util.zip.ZipInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -46,11 +49,11 @@ val downloadMonocraftFont by tasks.registering {
             output.parentFile.mkdirs()
             val archive = layout.buildDirectory.file("downloads/Monocraft-ttf.zip").get().asFile
             archive.parentFile.mkdirs()
-            java.net.URL("https://github.com/IdreesInc/Monocraft/releases/download/v4.2.1/Monocraft-ttf.zip")
+            URL("https://github.com/IdreesInc/Monocraft/releases/download/v4.2.1/Monocraft-ttf.zip")
                 .openConnection().apply { setRequestProperty("User-Agent", "IP-VAULT-Android-Build") }
                 .getInputStream().use { input -> archive.outputStream().use { input.copyTo(it) } }
             var copied = false
-            java.util.zip.ZipInputStream(archive.inputStream()).use { zip ->
+            ZipInputStream(archive.inputStream()).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break
                     val name = entry.name.substringAfterLast('/').lowercase()
