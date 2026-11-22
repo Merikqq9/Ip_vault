@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -235,10 +236,10 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     }
 }
 @Composable private fun TerminalPanel(title:String,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
- Column(modifier.fillMaxWidth()){
-  Text("┌──[ "+title.uppercase()+" ]"+"─".repeat((28-title.length).coerceAtLeast(2)),color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace)
-  Column(Modifier.fillMaxWidth().padding(start=7.dp,top=7.dp,bottom=7.dp)){content()}
-  Text("└"+"─".repeat(42),color=Color(0xFF245A38),fontSize=8.sp,fontFamily=FontFamily.Monospace)
+ Column(modifier.fillMaxWidth().padding(vertical=3.dp)){
+  Text("[ "+title.uppercase()+" ]",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+  HorizontalDivider(color=TerminalLineColor)
+  Column(Modifier.fillMaxWidth().padding(start=4.dp,top=7.dp,bottom=7.dp)){content()}
  }
 }
 @Composable private fun TerminalButton(label:String,modifier:Modifier=Modifier,enabled:Boolean=true,danger:Boolean=false,onClick:()->Unit){
@@ -266,22 +267,21 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  }
 }
 @Composable private fun TerminalPage(title:String, path:String, back:(()->Unit)?=null, content:@Composable ColumnScope.()->Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal=18.dp, vertical=14.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=14.dp, vertical=12.dp)) {
         if(back!=null) Row(verticalAlignment=Alignment.CenterVertically) {
             Text("< ESC", Modifier.clickable(onClick=back).padding(end=14.dp), color=Green, fontSize=10.sp, fontFamily=FontFamily.Monospace)
             Spacer(Modifier.weight(1f))
             Text("TERMINAL SESSION", color=Muted, fontSize=8.sp, fontFamily=FontFamily.Monospace)
         }
         TerminalHeader(title,path)
-        Spacer(Modifier.height(17.dp))
-        content()
-        Spacer(Modifier.weight(1f, fill=false))
         Spacer(Modifier.height(12.dp))
+        content()
+        Spacer(Modifier.height(14.dp))
         TerminalFooter()
     }
 }
 @Composable private fun TerminalLine(value:String,color:Color=Color.White) {
-    Text(value,color=color,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+    Text(value,color=color,fontSize=9.sp,fontFamily=FontFamily.Monospace,softWrap=true)
 }
 @Composable private fun CenterStatus(t:String,d:String) {
     Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.Start,verticalArrangement=Arrangement.Center) {
@@ -314,11 +314,16 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  val pulse=rememberInfiniteTransition(label="telemetry");val tick by pulse.animateFloat(0f,1f,infiniteRepeatable(tween(1200,easing=LinearEasing),RepeatMode.Reverse),label="tick")
  TerminalPage("GHOST TERMINAL","SYS://ROOT"){
   TerminalPanel("LIVE SYSTEM TELEMETRY"){
-   TerminalLine(" [●] CORE ................. ONLINE",Green);TerminalLine(" [●] AES-256-GCM .......... READY",Green);TerminalLine(" [●] ANDROID KEYSTORE ..... SEALED",Green);TerminalLine(" [●] NETWORK .............. "+ip,Color(0xFFB8D8C0));TerminalLine(" [●] LOCAL VAULT .......... ENCRYPTED",Green);TerminalLine(" ["+(if(tick>.5f)"●" else " ")+"] SESSION .............. ACTIVE",Green)
+   TerminalLine(" [●] CORE: ONLINE",Green);TerminalLine(" [●] AES-256-GCM: READY",Green);TerminalLine(" [●] KEYSTORE: SEALED",Green);TerminalLine(" [●] NETWORK: "+ip,Color(0xFFB8D8C0));TerminalLine(" [●] VAULT: ENCRYPTED",Green);TerminalLine(" ["+(if(tick>.5f)"●" else " ")+"] SESSION: ACTIVE",Green)
   }
   Spacer(Modifier.height(8.dp))
-  TerminalPanel("NOC WALL // NETWORK TOPOLOGY"){
-   TerminalLine("              .-------------------.",Color(0xFF69B987));TerminalLine("              |   IP_VAULT NODE   |",Green);TerminalLine("              |   127.0.0.1       |",Green);TerminalLine("              '---------+---------'",Color(0xFF69B987));TerminalLine("          .-------------+-------------.",Muted);TerminalLine("          |             |             |",Muted);TerminalLine("      [CIPHER]       [FIREWALL]     [STORAGE]",Green);TerminalLine("          |             |             |",Muted);TerminalLine("       AES-256       IP FILTER      LOCAL FS",Color(0xFF9DC9AA))
+  TerminalPanel("NODE MAP // LOCAL ARCHITECTURE"){
+   TerminalLine("          [ IP_VAULT ]",Green)
+   TerminalLine("                |",Muted)
+   TerminalLine("       +--------+--------+",Muted)
+   TerminalLine("       |        |        |",Muted)
+   TerminalLine("    [CIPHER] [ACCESS] [VAULT]",Green)
+   TerminalLine("    AES-256   IP ACL   LOCAL",Color(0xFF9DC9AA))
   }
   Spacer(Modifier.height(8.dp))
   TerminalPanel("NIGHT SHIFT // EVENT STREAM"){
