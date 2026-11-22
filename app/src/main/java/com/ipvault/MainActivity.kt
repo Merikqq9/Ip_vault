@@ -10,12 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import android.graphics.BitmapFactory
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,10 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.DisposableEffect
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,7 +53,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  val prefs by context.vaultStore.data.collectAsState(initial=androidx.datastore.preferences.core.emptyPreferences())
  var savedWhitelist by remember { mutableStateOf<Set<String>?>(null) };val whitelist=savedWhitelist ?: (prefs[AllowedIps]?:emptySet());val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
  var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)}
- var page by remember{mutableStateOf("home")};var previewItem by remember{mutableStateOf<VaultItem?>(null)};var previewFile by remember{mutableStateOf<File?>(null)};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
+ var page by remember{mutableStateOf("home")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(Unit){val stored=withContext(Dispatchers.IO){context.vaultStore.data.first()[AllowedIps]?:emptySet()};savedWhitelist=stored;ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};firstRun=stored.isEmpty();checking=false;if(stored.isNotEmpty()&&(ip==null||ip !in stored))(context as? ComponentActivity)?.finish()}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)scope.launch{try{
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
@@ -75,56 +65,11 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false}}
  ip==null||ip !in whitelist->CenterStatus("ACCESS DENIED","CLOSING")
  page=="settings"->WhitelistScreen(whitelist,ip,{page="home"},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist+v};savedWhitelist=whitelist+v}},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist-v};savedWhitelist=whitelist-v}})
- page=="viewer" && previewItem!=null && previewFile!=null->VaultViewer(previewItem!!,previewFile!!,{page="files";previewItem=null;previewFile=null})
- page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val out=File(context.cacheDir,"preview_"+item.id.substringBefore('.'));out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};previewItem=item;previewFile=temp;page="viewer"}catch(e:Exception){message="OPEN ERROR: "+(e.localizedMessage?:"unknown")}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
+ page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val safeName=item.name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"),"_").ifBlank{"file"};val out=File(context.cacheDir,"open_"+UUID.randomUUID().toString()+"_"+safeName);out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);val resolvedMime=if(item.mime.isNotBlank()&&item.mime!="application/octet-stream")item.mime else android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(item.name.substringAfterLast('.', "").lowercase()) ?: if(item.mime.startsWith("audio/"))"audio/*" else "*/*";val viewIntent=Intent(Intent.ACTION_VIEW).setDataAndType(uri,resolvedMime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);viewIntent.clipData=android.content.ClipData.newUri(context.contentResolver,item.name,uri);context.startActivity(Intent.createChooser(viewIntent,"Open with"))}catch(e:Exception){message="OPEN ERROR: "+(e.localizedMessage?:"No app can open this file")}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
  else->ip?.let { currentIp -> HomeScreen(currentIp,{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"}) } ?: CenterStatus("IP VAULT","CHECKING NETWORK")
  }
  message?.let{AlertDialog(onDismissRequest={message=null},confirmButton={TextButton(onClick={message=null}){Text("OK",color=Green)}},text={Text(it,color=Color.White)},containerColor=Color(0xFF101812))}
  }}
-}
-
-@Composable
-private fun VaultViewer(item: VaultItem, file: File, onBack: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null, tint = Green) }
-            Text(item.name, color = Color.White, maxLines = 1, modifier = Modifier.weight(1f))
-        }
-        when {
-            item.mime.startsWith("image/") -> {
-                val bitmap = remember(file.path) { BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap() }
-                if (bitmap != null) Image(bitmap, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                else Text("Не удалось открыть изображение", color = Color.White)
-            }
-            item.mime.startsWith("video/") || item.mime.startsWith("audio/") -> {
-                val player = remember(file.path) { ExoPlayer.Builder(context).build().apply { setMediaItem(MediaItem.fromUri(Uri.fromFile(file))); prepare(); playWhenReady = false } }
-                DisposableEffect(player) { onDispose { player.release() } }
-                if (item.mime.startsWith("video/")) {
-                    AndroidView(factory = { PlayerView(it).apply { this.player = player } }, modifier = Modifier.fillMaxWidth().weight(1f))
-                } else {
-                    Column(Modifier.fillMaxWidth().weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Icon(Icons.Outlined.Headphones, null, tint = Green, modifier = Modifier.size(76.dp))
-                        Spacer(Modifier.height(16.dp))
-                        Text(item.name, color = Color.White)
-                        Spacer(Modifier.height(20.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { player.seekTo((player.currentPosition - 10000).coerceAtLeast(0)) }) { Icon(Icons.Outlined.Replay10, null, tint = Green) }
-                            IconButton(onClick = { if (player.isPlaying) player.pause() else player.play() }) { Icon(if (player.isPlaying) Icons.Outlined.PauseCircle else Icons.Outlined.PlayCircle, null, tint = Green, modifier = Modifier.size(54.dp)) }
-                            IconButton(onClick = { player.seekTo((player.currentPosition + 10000).coerceAtMost(player.duration.coerceAtLeast(0))) }) { Icon(Icons.Outlined.Forward10, null, tint = Green) }
-                        }
-                    }
-                }
-            }
-            item.mime.startsWith("text/") || item.name.endsWith(".txt", true) || item.name.endsWith(".md", true) || item.name.endsWith(".json", true) || item.name.endsWith(".csv", true) || item.name.endsWith(".xml", true) -> {
-                val content = remember(file.path) { runCatching { file.readText(Charsets.UTF_8) }.getOrDefault("Не удалось прочитать текстовый файл") }
-                androidx.compose.foundation.rememberScrollState().let { scroll ->
-                    Text(content, color = Color.White, modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(12.dp), fontFamily = FontFamily.Monospace)
-                }
-            }
-            else -> Text("Для этого формата встроенный просмотр пока не поддерживается.", color = Muted)
-        }
-    }
 }
 
 @Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
