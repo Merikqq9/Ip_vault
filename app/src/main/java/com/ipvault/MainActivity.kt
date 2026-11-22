@@ -213,11 +213,11 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     Text(text=asciiEarthFrame(frame*0.19634954f),color=Green,fontFamily=FontFamily.Monospace,fontSize=7.sp,lineHeight=7.sp)
 }
 private fun asciiEarthFrame(rotation:Float):String{
-    val rows=13;val cols=25
+    val rows=13;val cols=21
     return buildString {
         for(y in 0 until rows){
             for(x in 0 until cols){
-                val nx=(x-(cols-1)/2f)/11.2f
+                val nx=(x-(cols-1)/2f)/9.5f
                 val ny=(y-(rows-1)/2f)/5.7f
                 val radius=nx*nx+ny*ny
                 if(radius>1f){append(' ');continue}
@@ -257,7 +257,17 @@ private fun asciiEarthFrame(rotation:Float):String{
 
 @Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
 @Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
-@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=28.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}};Spacer(Modifier.height(32.dp));Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(14.dp));Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Text(ip,color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(30.dp));Text(tr("MY VAULT"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);VaultMenuRow(tr("ALL FILES"),Icons.Outlined.Folder,all);VaultMenuRow(tr("PHOTOS"),Icons.Outlined.Image,images);VaultMenuRow(tr("VIDEO"),Icons.Outlined.Videocam,videos);VaultMenuRow(tr("AUDIO"),Icons.Outlined.Headphones,audio);VaultMenuRow(tr("DOCUMENTS & OTHER"),Icons.Outlined.Description,other)}}
+@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=28.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}};Spacer(Modifier.height(32.dp));Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(14.dp));Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);AnimatedIpText(ip);Spacer(Modifier.height(30.dp));Text(tr("MY VAULT"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);VaultMenuRow(tr("ALL FILES"),Icons.Outlined.Folder,all);VaultMenuRow(tr("PHOTOS"),Icons.Outlined.Image,images);VaultMenuRow(tr("VIDEO"),Icons.Outlined.Videocam,videos);VaultMenuRow(tr("AUDIO"),Icons.Outlined.Headphones,audio);VaultMenuRow(tr("DOCUMENTS & OTHER"),Icons.Outlined.Description,other)}}
+
+@Composable private fun AnimatedIpText(ip:String){
+    var count by remember(ip){mutableIntStateOf(0)}
+    LaunchedEffect(ip){
+        count=0
+        for(i in 1..ip.length){count=i;delay(115)}
+    }
+    Text(ip.take(count),color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace)
+}
+
 @Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){Row(Modifier.fillMaxWidth().padding(vertical=5.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF0D140F)).border(1.dp,Color(0xFF203629),RoundedCornerShape(12.dp)).clickable(onClick=click).padding(horizontal=14.dp,vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=Green);Spacer(Modifier.width(14.dp));Text(label,color=Color.White,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=Muted)}}
 @Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit){
     BackHandler(onBack=back)
