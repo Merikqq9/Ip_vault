@@ -33,3 +33,39 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
+
+// Fetch the open-source Monocraft typeface and package it as an Android font resource.
+val monocraftResDir = layout.buildDirectory.dir("generated/monocraft/res")
+val monocraftFontFile = monocraftResDir.map { it.file("font/monocraft.ttf") }
+val downloadMonocraftFont by tasks.registering {
+    outputs.file(monocraftFontFile)
+    doLast {
+        val output = monocraftFontFile.get().asFile
+        if (!output.exists()) {
+            output.parentFile.mkdirs()
+            val archive = layout.buildDirectory.file("downloads/Monocraft-ttf.zip").get().asFile
+            archive.parentFile.mkdirs()
+            java.net.URL("https://github.com/IdreesInc/Monocraft/releases/download/v4.2.1/Monocraft-ttf.zip")
+                .openConnection().apply { setRequestProperty("User-Agent", "IP-VAULT-Android-Build") }
+                .getInputStream().use { input -> archive.outputStream().use { input.copyTo(it) } }
+            var copied = false
+            java.util.zip.ZipInputStream(archive.inputStream()).use { zip ->
+                while (true) {
+                    val entry = zip.nextEntry ?: break
+                    val name = entry.name.substringAfterLast('/').lowercase()
+                    if (!entry.isDirectory && name.endsWith(".ttf") &&
+                        !name.contains("bold") && !name.contains("italic") &&
+                        !name.contains("thin") && !name.contains("light")) {
+                        output.outputStream().use { zip.copyTo(it) }
+                        copied = true
+                        break
+                    }
+                }
+            }
+            check(copied && output.length() > 1000L) { "Could not find Monocraft regular TTF in downloaded archive" }
+        }
+    }
+}
+android.sourceSets.getByName("main").res.srcDir(monocraftResDir)
+tasks.named("preBuild").configure { dependsOn(downloadMonocraftFont) }
