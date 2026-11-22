@@ -330,17 +330,17 @@ private fun asciiEarthFrame(rotation:Float):String{
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (bump) 1.045f else if (pressed) 0.975f else 1f,
+        targetValue = if (bump || pressed) 1.055f else 1f,
         animationSpec = spring(dampingRatio = 0.48f, stiffness = 360f),
         label = "vaultMenuScale"
     )
     val lift by animateFloatAsState(
-        targetValue = if (bump) 10f else if (pressed) 2f else 0f,
+        targetValue = if (bump || pressed) 12f else 0f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 340f),
         label = "vaultMenuLift"
     )
     val offset by animateFloatAsState(
-        targetValue = if (bump) (-7f) else 0f,
+        targetValue = if (bump || pressed) (-8f) else 0f,
         animationSpec = spring(dampingRatio = 0.42f, stiffness = 300f),
         label = "vaultMenuBounce"
     )
@@ -350,8 +350,8 @@ private fun asciiEarthFrame(rotation:Float):String{
             .graphicsLayer { translationY=offset; scaleX=scale; scaleY=scale }
             .shadow(lift.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .background(if (bump) Color(0xFF14231A) else Color(0xFF0D140F))
-            .border(1.dp, if (bump) Green.copy(alpha=.8f) else Color(0xFF203629), RoundedCornerShape(12.dp))
+            .background(if (bump || pressed) Color(0xFF14231A) else Color(0xFF0D140F))
+            .border(1.dp, if (bump || pressed) Green.copy(alpha=.8f) else Color(0xFF203629), RoundedCornerShape(12.dp))
             .clickable(interactionSource=interaction, indication=null, onClick=click)
             .padding(horizontal=14.dp,vertical=15.dp),
         verticalAlignment=Alignment.CenterVertically
