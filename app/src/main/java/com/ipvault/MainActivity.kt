@@ -177,30 +177,89 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 
 @Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
 @Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
-@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=28.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}};Spacer(Modifier.height(32.dp));Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(14.dp));Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Text(ip,color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(30.dp));Text(tr("MY VAULT"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);VaultMenuRow(tr("ALL FILES"),Icons.Outlined.Folder,all);VaultMenuRow(tr("PHOTOS"),Icons.Outlined.Image,images);VaultMenuRow(tr("VIDEO"),Icons.Outlined.Videocam,videos);VaultMenuRow(tr("AUDIO"),Icons.Outlined.Headphones,audio);VaultMenuRow(tr("DOCUMENTS & OTHER"),Icons.Outlined.Description,other)}}
-@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=click).padding(vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=Green);Spacer(Modifier.width(14.dp));Text(label,color=Color.White,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=Muted)};HorizontalDivider(color=Color(0xFF17231B))}
+@Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
+    Column(Modifier.fillMaxSize().padding(start=20.dp,end=20.dp,top=38.dp,bottom=22.dp)) {
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Column {
+                Text("IP_VAULT",color=Green,fontSize=25.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold,letterSpacing=1.sp)
+                Text("SECURE STORAGE // NODE 01",color=Muted,fontSize=9.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}
+        }
+        Spacer(Modifier.height(22.dp))
+        Text("┌─ SYSTEM STATUS ──────────────────",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+        Column(Modifier.fillMaxWidth().padding(start=8.dp,top=8.dp,bottom=8.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Text("● ",color=Green,fontFamily=FontFamily.Monospace)
+                Text("SYSTEM ONLINE",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+            }
+            Spacer(Modifier.height(7.dp))
+            Text("ACCESS      : ${tr("AUTHORIZED")}",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+            Text("ENCRYPTION  : AES-256-GCM",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+            Text("NETWORK IP  : $ip",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+        }
+        Text("└──────────────────────────────────",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+        Spacer(Modifier.height(26.dp))
+        Text("// ${tr("MY VAULT")}",color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+        Spacer(Modifier.height(8.dp))
+        VaultMenuRow("[01]  ${tr("ALL FILES")}",Icons.Outlined.Folder,all)
+        VaultMenuRow("[02]  ${tr("PHOTOS")}",Icons.Outlined.Image,images)
+        VaultMenuRow("[03]  ${tr("VIDEO")}",Icons.Outlined.Videocam,videos)
+        VaultMenuRow("[04]  ${tr("AUDIO")}",Icons.Outlined.Headphones,audio)
+        VaultMenuRow("[05]  ${tr("DOCUMENTS & OTHER")}",Icons.Outlined.Description,other)
+        Spacer(Modifier.weight(1f))
+        Text("LOCAL NODE // PRIVATE STORAGE",color=Muted,fontSize=9.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+        Text("──────────────────────────────────",color=Color(0xFF183323),fontSize=10.sp,fontFamily=FontFamily.Monospace)
+    }
+}
+@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){
+    Row(Modifier.fillMaxWidth().clickable(onClick=click).padding(vertical=15.dp),verticalAlignment=Alignment.CenterVertically) {
+        Icon(icon,null,tint=Green)
+        Spacer(Modifier.width(12.dp))
+        Text(label,color=Color.White,fontSize=12.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.weight(1f))
+        Text(" >",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+    }
+    HorizontalDivider(color=Color(0xFF183323),thickness=1.dp)
+}
 @Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit){
     BackHandler(onBack=back)
     val shown=items.filter{when(filter){"IMAGE"->it.mime.startsWith("image/");"VIDEO"->it.mime.startsWith("video/");"AUDIO"->it.mime.startsWith("audio/");"OTHER"->!(it.mime.startsWith("image/")||it.mime.startsWith("video/")||it.mime.startsWith("audio/"));else->true}}
     val title=when(filter){"IMAGE"->"PHOTOS";"VIDEO"->"VIDEO";"AUDIO"->"AUDIO";"OTHER"->"OTHER FILES";else->"ALL FILES"}
-    Column(Modifier.fillMaxSize().padding(start=20.dp,end=20.dp,top=52.dp,bottom=20.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){
+    Column(Modifier.fillMaxSize().padding(start=18.dp,end=18.dp,top=36.dp,bottom=18.dp)) {
+        Row(verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,null,tint=Green)}
-            Text(tr(title),color=Green,fontSize=20.sp,fontFamily=FontFamily.Monospace)
-            Spacer(Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text("// ${tr(title)}",color=Green,fontSize=18.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+                Text("VAULT DIRECTORY",color=Muted,fontSize=9.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+            }
             IconButton(onClick=add){Icon(Icons.Outlined.Add,null,tint=Green)}
         }
-        Spacer(Modifier.height(12.dp))
-        if(shown.isEmpty())Text(tr("NO FILES"),color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=12.dp))
-        LazyColumn{items(shown,key={it.id}){item->
-            Row(Modifier.fillMaxWidth().clickable{open(item)}.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically){
-                Icon(when{item.mime.startsWith("image/")->Icons.Outlined.Image;item.mime.startsWith("video/")->Icons.Outlined.Videocam;item.mime.startsWith("audio/")->Icons.Outlined.Headphones;else->Icons.Outlined.Description},null,tint=Green)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)){Text(item.name,color=Color.White,maxLines=1);Text(item.mime,color=Muted,fontSize=10.sp)}
-                IconButton(onClick={delete(item)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}
+        Spacer(Modifier.height(10.dp))
+        Text("┌─ ${shown.size} OBJECT(S) FOUND ─────────────",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+        if(shown.isEmpty()) {
+            Spacer(Modifier.height(18.dp))
+            Text("[ EMPTY DIRECTORY ]",color=Muted,fontSize=12.sp,fontFamily=FontFamily.Monospace)
+            Text("Import a file to initialize this sector.",color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+        }
+        LazyColumn {
+            items(shown,key={it.id}){item->
+                Row(Modifier.fillMaxWidth().clickable{open(item)}.padding(vertical=13.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Text(">",color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace)
+                    Spacer(Modifier.width(10.dp))
+                    Icon(when{item.mime.startsWith("image/")->Icons.Outlined.Image;item.mime.startsWith("video/")->Icons.Outlined.Videocam;item.mime.startsWith("audio/")->Icons.Outlined.Headphones;else->Icons.Outlined.Description},null,tint=Green)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(item.name,color=Color.White,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1)
+                        Text(item.mime,color=Muted,fontSize=9.sp,fontFamily=FontFamily.Monospace)
+                    }
+                    IconButton(onClick={delete(item)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}
+                }
+                HorizontalDivider(color=Color(0xFF183323))
             }
-            HorizontalDivider(color=Color(0xFF17231B))
-        }}
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("└── END OF DIRECTORY",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
     }
 }
 @Composable
