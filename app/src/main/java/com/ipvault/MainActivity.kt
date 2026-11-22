@@ -119,7 +119,6 @@ private fun VaultViewer(item: VaultItem, file: File, onBack: () -> Unit) {
             item.mime.startsWith("text/") || item.name.endsWith(".txt", true) || item.name.endsWith(".md", true) || item.name.endsWith(".json", true) || item.name.endsWith(".csv", true) || item.name.endsWith(".xml", true) -> {
                 val content = remember(file.path) { runCatching { file.readText(Charsets.UTF_8) }.getOrDefault("Не удалось прочитать текстовый файл") }
                 androidx.compose.foundation.rememberScrollState().let { scroll ->
-                    androidx.compose.foundation.verticalScroll(scroll)
                     Text(content, color = Color.White, modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(12.dp), fontFamily = FontFamily.Monospace)
                 }
             }
