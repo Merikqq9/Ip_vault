@@ -203,13 +203,12 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  val prefs by context.vaultStore.data.collectAsState(initial=androidx.datastore.preferences.core.emptyPreferences())
  var savedWhitelist by remember { mutableStateOf<Set<String>?>(null) };val whitelist=savedWhitelist ?: (prefs[AllowedIps]?:emptySet());val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
  var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)};var setupEmergency by rememberSaveable{mutableStateOf(false)};var emergencyUnlocked by rememberSaveable{mutableStateOf(false)};var showEmergencyPassword by rememberSaveable{mutableStateOf(false)}
- var page by rememberSaveable{mutableStateOf("home")};var welcomeDone by rememberSaveable{mutableStateOf(false)};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)};var emergencyPasswordResetKey by rememberSaveable{mutableIntStateOf(0)};val snackbarHostState=remember{SnackbarHostState()}
+ var page by rememberSaveable{mutableStateOf("home")};var welcomeDone by rememberSaveable{mutableStateOf(false)};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)};var emergencyPasswordResetKey by rememberSaveable{mutableIntStateOf(0)}
  LaunchedEffect(Unit){val storedPrefs=withContext(Dispatchers.IO){context.vaultStore.data.first()};val stored=storedPrefs[AllowedIps]?:emptySet();language=storedPrefs[LanguageKey]?: "en";activeVaultLanguage=language;savedWhitelist=stored;ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};firstRun=stored.isEmpty();setupEmergency=stored.isNotEmpty()&&storedPrefs[EmergencyHash]==null;checking=false}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)scope.launch{try{
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
   context.vaultStore.edit{it[VaultItems]=(it[VaultItems]?:emptySet())+item.encode()};message=tr("FILE ENCRYPTED AND SAVED")
  }catch(e:Exception){message=tr("IMPORT ERROR: ")+(e.localizedMessage?:"unknown")}}}
- LaunchedEffect(message){message?.let{snackbarHostState.showSnackbar(it,duration=SnackbarDuration.Short);message=null}}
  MaterialTheme(colorScheme=darkColorScheme(primary=Green,background=Black,surface=Color(0xFF0D140F),onSurface=Color.White), typography=minecraftTypography()){Surface(Modifier.fillMaxSize(),color=Black){
  Box(Modifier.fillMaxSize()) {
  when{
@@ -222,7 +221,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val safeName=item.name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"),"_").ifBlank{"file"};val out=File(context.cacheDir,"open_"+UUID.randomUUID().toString()+"_"+safeName);out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);val resolvedMime=if(item.mime.isNotBlank()&&item.mime!="application/octet-stream")item.mime else android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(item.name.substringAfterLast('.', "").lowercase()) ?: if(item.mime.startsWith("audio/"))"audio/*" else "*/*";val viewIntent=Intent(Intent.ACTION_VIEW).setDataAndType(uri,resolvedMime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);viewIntent.clipData=android.content.ClipData.newUri(context.contentResolver,item.name,uri);context.startActivity(Intent.createChooser(viewIntent,"Open with"))}catch(e:Exception){message=tr("OPEN ERROR: ")+(e.localizedMessage?:tr("No app can open this file"))}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
  else->HomeScreen(ip?: "UNVERIFIED",{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"})
  }
- SnackbarHost(hostState=snackbarHostState,modifier=Modifier.align(Alignment.BottomCenter).padding(horizontal=16.dp, vertical=18.dp))
+ TypingNotice(message=message,onFinished={message=null},modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=28.dp))
  }
  }}
 }
@@ -481,9 +480,9 @@ private fun WhitelistScreen(
                 var textMode by rememberSaveable { mutableStateOf(false) }
                 fun appendPasswordDigit(digit: String) {
                     when (activePasswordField) {
-                        "current" -> if (oldPassword.length < 128) oldPassword += digit
-                        "new" -> if (newPassword.length < 128) newPassword += digit
-                        else -> if (confirmPassword.length < 128) confirmPassword += digit
+                        "current" -> if (oldPassword.length < 8) { oldPassword += digit; if(oldPassword.length==8) activePasswordField="new" }
+                        "new" -> if (newPassword.length < 8) { newPassword += digit; if(newPassword.length==8) activePasswordField="confirm" }
+                        else -> if (confirmPassword.length < 8) confirmPassword += digit
                     }
                 }
                 fun erasePasswordDigit() {
@@ -507,9 +506,10 @@ private fun WhitelistScreen(
                         Box(Modifier.fillMaxWidth()) {
                             OutlinedTextField(
                                 value="• ".repeat(value.length).trim(), onValueChange={}, readOnly=true,
-                                modifier=Modifier.fillMaxWidth(), label={Text(tr(label))}, singleLine=true,
-                                colors=vaultFieldColors(),
-                                textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+                                label={Text(tr(label))}, singleLine=true,
+                                colors=vaultFieldColors(activePasswordField==field),
+                                textStyle=TextStyle(fontFamily=VaultFont,color=if(activePasswordField==field)Green else Muted,letterSpacing=2.sp),
+                                modifier=Modifier.fillMaxWidth().then(if(activePasswordField==field)Modifier.shadow(7.dp,RoundedCornerShape(6.dp),ambientColor=Green.copy(alpha=.35f)) else Modifier)
                             )
                             Box(Modifier.matchParentSize().clickable { activePasswordField=field })
                         }
@@ -587,7 +587,22 @@ private fun WhitelistScreen(
         }
     }
 }
-@Composable private fun vaultFieldColors()=OutlinedTextFieldDefaults.colors(focusedBorderColor=Green,unfocusedBorderColor=Muted,focusedLabelColor=Green,cursorColor=Green)
+@Composable private fun vaultFieldColors(active:Boolean=false)=OutlinedTextFieldDefaults.colors(focusedBorderColor=if(active)Green else Muted,unfocusedBorderColor=if(active)Green else Muted,focusedLabelColor=if(active)Green else Muted,unfocusedLabelColor=if(active)Green else Muted,cursorColor=Green)
+
+@Composable private fun TypingNotice(message:String?,onFinished:()->Unit,modifier:Modifier=Modifier){
+    var visible by remember { mutableIntStateOf(0) }
+    var fading by remember { mutableStateOf(false) }
+    LaunchedEffect(message){
+        visible=0;fading=false
+        if(message!=null){
+            while(visible<message.length){visible++;delay(28)}
+            delay(1500);fading=true;delay(260);onFinished()
+        }
+    }
+    if(message!=null) Text(text=message.take(visible),modifier=modifier,
+        color=Green.copy(alpha=if(fading)0f else 1f),fontFamily=VaultFont,fontSize=11.sp,
+        textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+}
 
 @Composable private fun EmergencyPasswordSetupScreen(onSave:(String)->Unit){
     var password by remember{mutableStateOf("")}
@@ -595,8 +610,8 @@ private fun WhitelistScreen(
     var activeField by remember{mutableStateOf("password")}
     var textMode by remember{mutableStateOf(false)}
     fun appendDigit(digit:String){
-        if(activeField=="password"&&password.length<128)password+=digit
-        else if(activeField=="confirm"&&confirm.length<128)confirm+=digit
+        if(activeField=="password"&&password.length<8){password+=digit;if(password.length==8)activeField="confirm"}
+        else if(activeField=="confirm"&&confirm.length<8)confirm+=digit
     }
     fun eraseDigit(){
         if(activeField=="password"&&password.isNotEmpty())password=password.dropLast(1)
@@ -625,9 +640,10 @@ private fun WhitelistScreen(
             Box(Modifier.fillMaxWidth()){
                 OutlinedTextField(
                     value="• ".repeat(password.length).trim(),
-                    onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth(),
-                    label={Text(tr("Backup password"))},singleLine=true,colors=vaultFieldColors(),
-                    textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+                    onValueChange={},readOnly=true,
+                    label={Text(tr("Backup password"))},singleLine=true,colors=vaultFieldColors(activeField=="password"),
+                    textStyle=TextStyle(fontFamily=VaultFont,color=if(activeField=="password")Green else Muted,letterSpacing=2.sp),
+                    modifier=Modifier.fillMaxWidth().then(if(activeField=="password")Modifier.shadow(7.dp,RoundedCornerShape(6.dp),ambientColor=Green.copy(alpha=.35f)) else Modifier)
                 )
                 Box(Modifier.matchParentSize().clickable{activeField="password"})
             }
@@ -635,9 +651,10 @@ private fun WhitelistScreen(
             Box(Modifier.fillMaxWidth()){
                 OutlinedTextField(
                     value="• ".repeat(confirm.length).trim(),
-                    onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth(),
-                    label={Text(tr("Repeat new password"))},singleLine=true,colors=vaultFieldColors(),
-                    textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+                    onValueChange={},readOnly=true,
+                    label={Text(tr("Repeat new password"))},singleLine=true,colors=vaultFieldColors(activeField=="confirm"),
+                    textStyle=TextStyle(fontFamily=VaultFont,color=if(activeField=="confirm")Green else Muted,letterSpacing=2.sp),
+                    modifier=Modifier.fillMaxWidth().then(if(activeField=="confirm")Modifier.shadow(7.dp,RoundedCornerShape(6.dp),ambientColor=Green.copy(alpha=.35f)) else Modifier)
                 )
                 Box(Modifier.matchParentSize().clickable{activeField="confirm"})
             }
