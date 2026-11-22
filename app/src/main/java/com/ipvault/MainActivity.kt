@@ -65,7 +65,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  ip==null||ip !in whitelist->CenterStatus("ACCESS DENIED","CLOSING")
  page=="settings"->WhitelistScreen(whitelist,ip,{page="home"},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist+v}}},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist-v}}})
  page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val out=File(context.cacheDir,"preview_"+item.id.substringBefore('.'));out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).setDataAndType(uri,item.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),"Open with"))}catch(e:Exception){message="OPEN ERROR: "+(e.localizedMessage?:"unknown")}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
- else->HomeScreen(ip,{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"})
+ else->ip?.let { currentIp -> HomeScreen(currentIp,{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"}) } ?: CenterStatus("IP VAULT","CHECKING NETWORK")
  }
  message?.let{AlertDialog(onDismissRequest={message=null},confirmButton={TextButton(onClick={message=null}){Text("OK",color=Green)}},text={Text(it,color=Color.White)},containerColor=Color(0xFF101812))}
  }}
@@ -75,5 +75,55 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 @Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){Column(Modifier.fillMaxSize().padding(horizontal=24.dp,vertical=28.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}};Spacer(Modifier.height(32.dp));Text("CONNECTION",color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text("AUTHORIZED",color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(14.dp));Text("PUBLIC IP",color=Muted,fontSize=10.sp,letterSpacing=2.sp);Text(ip,color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(30.dp));Text("MY VAULT",color=Muted,fontSize=10.sp,letterSpacing=2.sp);VaultMenuRow("ALL FILES",Icons.Outlined.Folder,all);VaultMenuRow("PHOTOS",Icons.Outlined.Image,images);VaultMenuRow("VIDEO",Icons.Outlined.Videocam,videos);VaultMenuRow("AUDIO",Icons.Outlined.Headphones,audio);VaultMenuRow("DOCUMENTS & OTHER",Icons.Outlined.Description,other)}}
 @Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=click).padding(vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=Green);Spacer(Modifier.width(14.dp));Text(label,color=Color.White,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=Muted)};HorizontalDivider(color=Color(0xFF17231B))}
 @Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit){val shown=items.filter{when(filter){"IMAGE"->it.mime.startsWith("image/");"VIDEO"->it.mime.startsWith("video/");"AUDIO"->it.mime.startsWith("audio/");"OTHER"->!(it.mime.startsWith("image/")||it.mime.startsWith("video/")||it.mime.startsWith("audio/"));else->true}};Column(Modifier.fillMaxSize().padding(20.dp)){Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,null,tint=Green)};Text("MY VAULT",color=Green,fontSize=20.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.weight(1f));IconButton(onClick=add){Icon(Icons.Outlined.Add,null,tint=Green)}};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)){listOf("ALL","IMAGE","VIDEO","AUDIO","OTHER").forEach{f->FilterChip(selected=filter==f,onClick={setFilter(f)},label={Text(f,fontSize=9.sp)},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=Green,selectedLabelColor=Black))}};Spacer(Modifier.height(12.dp));if(shown.isEmpty())Text("NO FILES",color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=12.dp));LazyColumn{items(shown,key={it.id}){item->Row(Modifier.fillMaxWidth().clickable{open(item)}.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically){Icon(when{item.mime.startsWith("image/")->Icons.Outlined.Image;item.mime.startsWith("video/")->Icons.Outlined.Videocam;item.mime.startsWith("audio/")->Icons.Outlined.Headphones;else->Icons.Outlined.Description},null,tint=Green);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(item.name,color=Color.White,maxLines=1);Text(item.mime,color=Muted,fontSize=10.sp)};IconButton(onClick={delete(item)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}};HorizontalDivider(color=Color(0xFF17231B))}}}}
-@Composable private fun WhitelistScreen(ips:Set<String>,current:String?,back:()->Unit,add:(String)->Unit,remove:(String)->Unit){var entry by remember{mutableStateOf("")};Column(Modifier.fillMaxSize().padding(24.dp)){Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,null,tint=Green)};Text("SETTINGS",color=Green,fontSize=20.sp,fontFamily=FontFamily.Monospace)};Spacer(Modifier.height(28.dp));Text("IP WHITELIST",color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(12.dp));OutlinedTextField(entry,{entry=it},modifier=Modifier.fillMaxWidth(),label={Text("IPv4 / IPv6")},singleLine=true,colors=vaultFieldColors());Spacer(Modifier.height(8.dp));Button(onClick={add(entry.trim());entry=""},enabled=entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text("ADD IP")};Spacer(Modifier.height(20.dp));LazyColumn{items(ips.sorted()){a->Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(a,color=Color.White,fontFamily=FontFamily.Monospace);Text(if(a==current)"CURRENT IP" else "ALLOWED",color=Green,fontSize=10.sp)};IconButton(onClick={remove(a)}){Icon(Icons.Outlined.DeleteOutline,null,tint=Muted)}};HorizontalDivider(color=Color(0xFF17231B))}}}}}
+@Composable
+private fun WhitelistScreen(
+    ips: Set<String>,
+    current: String?,
+    back: () -> Unit,
+    add: (String) -> Unit,
+    remove: (String) -> Unit
+) {
+    var entry by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, null, tint = Green) }
+            Text("SETTINGS", color = Green, fontSize = 20.sp, fontFamily = FontFamily.Monospace)
+        }
+        Spacer(Modifier.height(28.dp))
+        Text("IP WHITELIST", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = entry,
+            onValueChange = { entry = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("IPv4 / IPv6") },
+            singleLine = true,
+            colors = vaultFieldColors()
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = { add(entry.trim()); entry = "" },
+            enabled = entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),
+            colors = ButtonDefaults.buttonColors(containerColor = Green, contentColor = Black)
+        ) { Text("ADD IP") }
+        Spacer(Modifier.height(20.dp))
+        LazyColumn {
+            items(ips.sorted()) { address ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(address, color = Color.White, fontFamily = FontFamily.Monospace)
+                        Text(if (address == current) "CURRENT IP" else "ALLOWED", color = Green, fontSize = 10.sp)
+                    }
+                    IconButton(onClick = { remove(address) }) {
+                        Icon(Icons.Outlined.DeleteOutline, null, tint = Muted)
+                    }
+                }
+                HorizontalDivider(color = Color(0xFF17231B))
+            }
+        }
+    }
+}
 @Composable private fun vaultFieldColors()=OutlinedTextFieldDefaults.colors(focusedBorderColor=Green,unfocusedBorderColor=Muted,focusedLabelColor=Green,cursorColor=Green)
