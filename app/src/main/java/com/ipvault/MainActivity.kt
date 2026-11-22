@@ -391,11 +391,11 @@ private fun keepParentheticalTogether(value:String):String {
                             Text("-rw-------",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
                             Spacer(Modifier.width(7.dp))
                             Text(item.name,color=Color(0xFFE1F8E7),fontSize=14.sp,fontFamily=FontFamily.Monospace,maxLines=1,modifier=Modifier.weight(1f))
-                            Text("[ OPEN ]",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+                            Text("[ OPEN ]",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false)
                         }
                         Row(verticalAlignment=Alignment.CenterVertically) {
                             Text("│  MIME: "+item.mime,color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.weight(1f))
-                            Text("[ DELETE ]",Modifier.clickable{delete(item)}.padding(horizontal=5.dp,vertical=3.dp),color=TerminalAmber,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+                            Text("[ DELETE ]",Modifier.clickable{delete(item)}.padding(horizontal=5.dp,vertical=3.dp),color=TerminalAmber,fontSize=12.sp,fontFamily=FontFamily.Monospace,maxLines=1,softWrap=false)
                         }
                         Text("└─ ID: "+item.id.take(18)+"…",color=Color(0xFF527A60),fontSize=17.sp,fontFamily=FontFamily.Monospace)
                     }
@@ -462,7 +462,7 @@ private fun keepParentheticalTogether(value:String):String {
                                 Text(address,color=Color.White,fontFamily=FontFamily.Monospace,fontSize=17.sp)
                                 Text(if(address==current)"CURRENT NODE / ACTIVE" else "TRUSTED ADDRESS",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
                             }
-                            Text("[ REVOKE ]",Modifier.clickable{remove(address)}.padding(6.dp),color=TerminalAmber,fontFamily=FontFamily.Monospace,fontSize=17.sp)
+                            Text("[ REVOKE ]",Modifier.clickable{remove(address)}.padding(6.dp),color=TerminalAmber,fontFamily=FontFamily.Monospace,fontSize=12.sp,maxLines=1,softWrap=false)
                         }
                         HorizontalDivider(color=TerminalLineColor)
                     }
