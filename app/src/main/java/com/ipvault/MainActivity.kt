@@ -204,15 +204,15 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  LaunchedEffect(Unit){while(true){cursor=!cursor;delay(380)}}
  LaunchedEffect(lines){printed.clear();lines.forEachIndexed{index,line->printed.add("");line.forEach{ch->printed[index]=printed[index]+ch;delay(if(index==0)20 else 8)};progress=(index+1)*100/lines.size;delay(170)};delay(700);onFinished()}
  Column(Modifier.fillMaxSize().padding(horizontal=13.dp,vertical=22.dp),verticalArrangement=Arrangement.Center){
-  Text("  ___ ____    __     __",color=Green,fontSize=16.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-  Text(" |_ _|  _ \\  \\ \\   / /",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
-  Text("  | || |_) |  \\ \\ / /",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
-  Text(" |___|____/    \\___/",color=Green,fontSize=12.sp,fontFamily=FontFamily.Monospace)
-  Text(" [ IP_VAULT // SECURE STORAGE TERMINAL ]",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
-  Spacer(Modifier.height(18.dp));Text("┌─ BOOT SEQUENCE / AUTHENTICATED STARTUP",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace)
-  Column(Modifier.fillMaxWidth().background(Color(0xB8030905)).padding(9.dp)){printed.forEachIndexed{index,line->Text(line+(if(index==printed.lastIndex&&progress<100&&cursor)" ▌"else""),color=if(index==0)Green else Color(0xFFB4DCC0),fontSize=8.sp,fontFamily=FontFamily.Monospace,lineHeight=14.sp)}}
-  Spacer(Modifier.height(12.dp));Text("TRANSFER  ["+"█".repeat(progress/5)+"·".repeat(20-progress/5)+"]  "+progress+"%",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace)
-  Text(if(progress<100)"root@ipvault:~$ initializing..."else"root@ipvault:~$ access gateway ready_"+(if(cursor)"▌"else""),color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  Text("  ___ ____    __     __",color=Green,fontSize=18.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+  Text(" |_ _|  _ \\  \\ \\   / /",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Text("  | || |_) |  \\ \\ / /",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Text(" |___|____/    \\___/",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Text(" [ IP_VAULT // SECURE STORAGE TERMINAL ]",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Spacer(Modifier.height(18.dp));Text("┌─ BOOT SEQUENCE / AUTHENTICATED STARTUP",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
+  Column(Modifier.fillMaxWidth().background(Color(0xB8030905)).padding(9.dp)){printed.forEachIndexed{index,line->Text(line+(if(index==printed.lastIndex&&progress<100&&cursor)" ▌"else""),color=if(index==0)Green else Color(0xFFB4DCC0),fontSize=14.sp,fontFamily=FontFamily.Monospace,lineHeight=14.sp)}}
+  Spacer(Modifier.height(12.dp));Text("TRANSFER  ["+"█".repeat(progress/5)+"·".repeat(20-progress/5)+"]  "+progress+"%",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
+  Text(if(progress<100)"root@ipvault:~$ initializing..."else"root@ipvault:~$ access gateway ready_"+(if(cursor)"▌"else""),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
  }
 }
 @Composable private fun MatrixRainBackground(modifier:Modifier=Modifier) {
@@ -221,10 +221,10 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 }
 @Composable private fun TerminalHeader(title:String,path:String="SYS://IP_VAULT") {
  Column(Modifier.fillMaxWidth()){
-  Text("IP_VAULT // SECURE NODE",color=Green,fontSize=15.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-  Text(title.uppercase(),color=Color(0xFFD8F5DF),fontSize=10.sp,fontFamily=FontFamily.Monospace)
-  Text("LINK: ENCRYPTED  •  SESSION: ACTIVE",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
-  Text(path,color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  Text("IP_VAULT // SECURE NODE",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+  Text(title.uppercase(),color=Color(0xFFD8F5DF),fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Text("LINK: ENCRYPTED  •  SESSION: ACTIVE",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Text(path,color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
   HorizontalDivider(color=TerminalLineColor)
  }
 }
@@ -232,46 +232,46 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     Column(Modifier.fillMaxWidth()) {
         HorizontalDivider(color=TerminalLineColor)
         Spacer(Modifier.height(6.dp))
-        Text("[" + text + "]  •  LOCAL ENCRYPTED STORAGE", color=Muted, fontSize=8.sp, fontFamily=FontFamily.Monospace, letterSpacing=1.sp)
+        Text("[" + text + "]  •  LOCAL ENCRYPTED STORAGE", color=Muted, fontSize=14.sp, fontFamily=FontFamily.Monospace, letterSpacing=1.sp)
     }
 }
 @Composable private fun TerminalPanel(title:String,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
- Column(modifier.fillMaxWidth().padding(vertical=3.dp)){
-  Text("[ "+title.uppercase()+" ]",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+ Column(modifier.fillMaxWidth().padding(vertical=1.dp)){
+  Text("[ "+title.uppercase()+" ]",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
   HorizontalDivider(color=TerminalLineColor)
-  Column(Modifier.fillMaxWidth().padding(start=4.dp,top=7.dp,bottom=7.dp)){content()}
+  Column(Modifier.fillMaxWidth().padding(start=2.dp,top=4.dp,bottom=4.dp)){content()}
  }
 }
 @Composable private fun TerminalButton(label:String,modifier:Modifier=Modifier,enabled:Boolean=true,danger:Boolean=false,onClick:()->Unit){
  val tint=if(danger)Color(0xFFFF625D)else Green
- Row(modifier.fillMaxWidth().clickable(enabled=enabled,onClick=onClick).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
-  Text("root@ipvault:~$",color=Muted,fontSize=9.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(7.dp))
-  Text(label.lowercase().replace(" ","_"),color=if(enabled)tint else Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
-  Spacer(Modifier.weight(1f));Text(if(enabled)"[ ENTER ↵ ]" else "[ LOCKED ]",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+ Row(modifier.fillMaxWidth().clickable(enabled=enabled,onClick=onClick).padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically){
+  Text("root@ipvault:~$",color=Muted,fontSize=17.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(7.dp))
+  Text(label.lowercase().replace(" ","_"),color=if(enabled)tint else Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold)
+  Spacer(Modifier.weight(1f));Text(if(enabled)"[ ENTER ↵ ]" else "[ LOCKED ]",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
  }
 }
 @Composable private fun TerminalMenuRow(label:String,index:String,detail:String="",onClick:()->Unit){
  Column(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=3.dp)){
-  Row(verticalAlignment=Alignment.CenterVertically){Text("├─ ["+index+"]",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(8.dp));Text(label.uppercase(),color=Color(0xFFD8F5DF),fontSize=10.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("▶",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)}
-  if(detail.isNotEmpty())Text("│     "+detail,color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  Row(verticalAlignment=Alignment.CenterVertically){Text("├─ ["+index+"]",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(8.dp));Text(label.uppercase(),color=Color(0xFFD8F5DF),fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("▶",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)}
+  if(detail.isNotEmpty())Text("│     "+detail,color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
  }
 }
 @Composable private fun TerminalField(value:String,onValueChange:(String)->Unit,label:String,password:Boolean=false,keyboardOptions:KeyboardOptions=KeyboardOptions.Default){
- Column(Modifier.fillMaxWidth().padding(vertical=4.dp)){
-  Text("# "+label.uppercase(),color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
-  Row(Modifier.fillMaxWidth().padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
-   Text("root@ipvault:~$ ",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
-   BasicTextField(value=value,onValueChange=onValueChange,singleLine=true,visualTransformation=if(password)PasswordVisualTransformation()else androidx.compose.ui.text.input.VisualTransformation.None,keyboardOptions=keyboardOptions,textStyle=androidx.compose.ui.text.TextStyle(color=Color(0xFFE2FFE8),fontFamily=FontFamily.Monospace,fontSize=12.sp),cursorBrush=SolidColor(Green),modifier=Modifier.weight(1f))
+ Column(Modifier.fillMaxWidth().padding(vertical=2.dp)){
+  Text("# "+label.uppercase(),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
+   Text("root@ipvault:~$ ",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+   BasicTextField(value=value,onValueChange=onValueChange,singleLine=true,visualTransformation=if(password)PasswordVisualTransformation()else androidx.compose.ui.text.input.VisualTransformation.None,keyboardOptions=keyboardOptions,textStyle=androidx.compose.ui.text.TextStyle(color=Color(0xFFE2FFE8),fontFamily=FontFamily.Monospace,fontSize=14.sp),cursorBrush=SolidColor(Green),modifier=Modifier.weight(1f))
   }
-  Text("─".repeat(42),color=Color(0xFF245A38),fontSize=8.sp,fontFamily=FontFamily.Monospace)
+  Text("─".repeat(42),color=Color(0xFF245A38),fontSize=14.sp,fontFamily=FontFamily.Monospace)
  }
 }
 @Composable private fun TerminalPage(title:String, path:String, back:(()->Unit)?=null, content:@Composable ColumnScope.()->Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=14.dp, vertical=12.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=10.dp, vertical=8.dp)) {
         if(back!=null) Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("< ESC", Modifier.clickable(onClick=back).padding(end=14.dp), color=Green, fontSize=10.sp, fontFamily=FontFamily.Monospace)
+            Text("< ESC", Modifier.clickable(onClick=back).padding(end=14.dp), color=Green, fontSize=14.sp, fontFamily=FontFamily.Monospace)
             Spacer(Modifier.weight(1f))
-            Text("TERMINAL SESSION", color=Muted, fontSize=8.sp, fontFamily=FontFamily.Monospace)
+            Text("TERMINAL SESSION", color=Muted, fontSize=14.sp, fontFamily=FontFamily.Monospace)
         }
         TerminalHeader(title,path)
         Spacer(Modifier.height(12.dp))
@@ -281,18 +281,18 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     }
 }
 @Composable private fun TerminalLine(value:String,color:Color=Color.White) {
-    Text(value,color=color,fontSize=9.sp,fontFamily=FontFamily.Monospace,softWrap=true)
+    Text(value,color=color,fontSize=17.sp,fontFamily=FontFamily.Monospace,softWrap=true)
 }
 @Composable private fun CenterStatus(t:String,d:String) {
     Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.Start,verticalArrangement=Arrangement.Center) {
-        Text("┌── BOOT SEQUENCE ──────────────────",color=Green,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+        Text("┌── BOOT SEQUENCE ──────────────────",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
         Spacer(Modifier.height(16.dp))
         Text("IP_VAULT",color=Green,fontSize=28.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
         Spacer(Modifier.height(8.dp))
-        Text("> " + t.uppercase(),color=Color.White,fontSize=13.sp,fontFamily=FontFamily.Monospace)
-        Text("> " + d.uppercase(),color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+        Text("> " + t.uppercase(),color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace)
+        Text("> " + d.uppercase(),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
         Spacer(Modifier.height(16.dp))
-        Text("INITIALIZING SECURE ENVIRONMENT  ▓▓▓▓▓▓░░░",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace)
+        Text("INITIALIZING SECURE ENVIRONMENT  ▓▓▓▓▓▓░░░",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace)
     }
 }
 @Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit) {
@@ -301,13 +301,13 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
         TerminalPanel("NETWORK DISCOVERY") {
             TerminalLine("> PUBLIC IP DETECTED: " + (ip ?: "UNAVAILABLE"), if(ip==null)TerminalAmber else Green)
             Spacer(Modifier.height(5.dp))
-            Text(tr("Add your current public IP to initialize the global whitelist."),color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+            Text(tr("Add your current public IP to initialize the global whitelist."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
         }
         Spacer(Modifier.height(16.dp))
         TerminalField(value,{value=it},tr("Public IP address"),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii))
         Spacer(Modifier.height(12.dp))
         TerminalButton(tr("TRUST THIS IP"),enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$"))){onTrust(value.trim())}
-        if(ip==null) Text("! NETWORK OFFLINE — CONNECT AND RESTART",color=TerminalAmber,fontSize=9.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.padding(top=12.dp))
+        if(ip==null) Text("! NETWORK OFFLINE — CONNECT AND RESTART",color=TerminalAmber,fontSize=17.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.padding(top=12.dp))
     }
 }
 @Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){
@@ -329,7 +329,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
   TerminalPanel("NIGHT SHIFT // EVENT STREAM"){
    TerminalLine("00:00:01  SYS   session handshake ........ OK",Color(0xFFB8D8C0));TerminalLine("00:00:02  CRYP  vault cipher .............. READY",Color(0xFFB8D8C0));TerminalLine("00:00:03  NET   trusted route ............. ACTIVE",Color(0xFFB8D8C0));TerminalLine("00:00:04  AUTH  access policy ............. ENFORCED",Green);TerminalLine("00:00:05  LOG   local audit ............... SEALED",Color(0xFFB8D8C0))
   }
-  Spacer(Modifier.height(8.dp));Text("root@ipvault:~$ vault --list-sectors",color=Color(0xFFB8D8C0),fontSize=9.sp,fontFamily=FontFamily.Monospace)
+  Spacer(Modifier.height(8.dp));Text("root@ipvault:~$ vault --list-sectors",color=Color(0xFFB8D8C0),fontSize=17.sp,fontFamily=FontFamily.Monospace)
   TerminalMenuRow("ALL ENCRYPTED OBJECTS","01","vault://files",all);TerminalMenuRow("IMAGE SECTOR","02","vault://media/images",images);TerminalMenuRow("VIDEO SECTOR","03","vault://media/video",videos);TerminalMenuRow("AUDIO SECTOR","04","vault://media/audio",audio);TerminalMenuRow("DOCUMENTS / OTHER","05","vault://data/misc",other)
   Spacer(Modifier.height(8.dp));TerminalButton("open system configuration",onClick=settings)
  }
@@ -354,16 +354,16 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
                 items(shown,key={it.id}) { item ->
                     Column(Modifier.fillMaxWidth().padding(vertical=7.dp)) {
                         Row(Modifier.fillMaxWidth().clickable{open(item)},verticalAlignment=Alignment.CenterVertically) {
-                            Text("-rw-------",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+                            Text("-rw-------",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
                             Spacer(Modifier.width(7.dp))
-                            Text(item.name,color=Color(0xFFE1F8E7),fontSize=10.sp,fontFamily=FontFamily.Monospace,maxLines=1,modifier=Modifier.weight(1f))
-                            Text("[ OPEN ]",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+                            Text(item.name,color=Color(0xFFE1F8E7),fontSize=14.sp,fontFamily=FontFamily.Monospace,maxLines=1,modifier=Modifier.weight(1f))
+                            Text("[ OPEN ]",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
                         }
                         Row(verticalAlignment=Alignment.CenterVertically) {
-                            Text("│  MIME: "+item.mime,color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.weight(1f))
-                            Text("[ DELETE ]",Modifier.clickable{delete(item)}.padding(horizontal=5.dp,vertical=3.dp),color=TerminalAmber,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+                            Text("│  MIME: "+item.mime,color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace,modifier=Modifier.weight(1f))
+                            Text("[ DELETE ]",Modifier.clickable{delete(item)}.padding(horizontal=5.dp,vertical=3.dp),color=TerminalAmber,fontSize=14.sp,fontFamily=FontFamily.Monospace)
                         }
-                        Text("└─ ID: "+item.id.take(18)+"…",color=Color(0xFF527A60),fontSize=7.sp,fontFamily=FontFamily.Monospace)
+                        Text("└─ ID: "+item.id.take(18)+"…",color=Color(0xFF527A60),fontSize=17.sp,fontFamily=FontFamily.Monospace)
                     }
                     HorizontalDivider(color=TerminalLineColor)
                 }
@@ -420,15 +420,15 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
                 Spacer(Modifier.height(10.dp))
                 TerminalButton(tr("ADD IP"),enabled=entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$"))){add(entry.trim());entry=""}
                 Spacer(Modifier.height(12.dp))
-                Text("$ whitelist --entries",color=Green,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+                Text("$ whitelist --entries",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
                 LazyColumn(Modifier.weight(1f,fill=true)) {
                     items(ips.sorted()) { address ->
                         Row(Modifier.fillMaxWidth().padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(address,color=Color.White,fontFamily=FontFamily.Monospace,fontSize=11.sp)
-                                Text(if(address==current)"CURRENT NODE / ACTIVE" else "TRUSTED ADDRESS",color=Green,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+                                Text(address,color=Color.White,fontFamily=FontFamily.Monospace,fontSize=17.sp)
+                                Text(if(address==current)"CURRENT NODE / ACTIVE" else "TRUSTED ADDRESS",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)
                             }
-                            Text("[ REVOKE ]",Modifier.clickable{remove(address)}.padding(6.dp),color=TerminalAmber,fontFamily=FontFamily.Monospace,fontSize=9.sp)
+                            Text("[ REVOKE ]",Modifier.clickable{remove(address)}.padding(6.dp),color=TerminalAmber,fontFamily=FontFamily.Monospace,fontSize=17.sp)
                         }
                         HorizontalDivider(color=TerminalLineColor)
                     }
@@ -445,7 +445,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     TerminalPage("EMERGENCY CREDENTIAL","SEC://RECOVERY") {
         TerminalPanel("RECOVERY KEY SETUP") {
             TerminalLine("> CREATE A SECONDARY ACCESS KEY",Green)
-            Text(tr("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist."),color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+            Text(tr("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
         }
         Spacer(Modifier.height(13.dp))
         TerminalField(password,{password=it},tr("Backup password"),true)
@@ -453,8 +453,8 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
         TerminalField(confirm,{confirm=it},tr("Repeat new password"),true)
         Spacer(Modifier.height(12.dp))
         TerminalButton(tr("SAVE BACKUP PASSWORD"),enabled=password.length>=8&&password==confirm){onSave(password)}
-        if(password.isNotEmpty()&&password.length<8) Text("! MINIMUM 8 CHARACTERS",color=TerminalAmber,fontSize=9.sp,fontFamily=FontFamily.Monospace)
-        if(confirm.isNotEmpty()&&password!=confirm) Text("! PASSWORDS DO NOT MATCH",color=TerminalAmber,fontSize=9.sp,fontFamily=FontFamily.Monospace)
+        if(password.isNotEmpty()&&password.length<8) Text("! MINIMUM 8 CHARACTERS",color=TerminalAmber,fontSize=17.sp,fontFamily=FontFamily.Monospace)
+        if(confirm.isNotEmpty()&&password!=confirm) Text("! PASSWORDS DO NOT MATCH",color=TerminalAmber,fontSize=17.sp,fontFamily=FontFamily.Monospace)
     }
 }
 @Composable private fun EmergencyPasswordEntryScreen(onCancel:()->Unit,onUnlock:(String)->Unit) {
@@ -462,14 +462,14 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
     TerminalPage("RECOVERY AUTHENTICATION","SEC://UNLOCK") {
         TerminalPanel("UNAUTHORIZED NETWORK DETECTED") {
             TerminalLine("> SECONDARY CREDENTIAL REQUIRED",TerminalAmber)
-            Text(tr("Enter your backup password to unlock IP VAULT."),color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+            Text(tr("Enter your backup password to unlock IP VAULT."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
         }
         Spacer(Modifier.height(14.dp))
         TerminalField(password,{password=it},tr("Backup password"),true)
         Spacer(Modifier.height(12.dp))
         TerminalButton(tr("UNLOCK"),enabled=password.isNotEmpty()){onUnlock(password)}
         Spacer(Modifier.height(8.dp))
-        Text("< CANCEL / ESC",Modifier.clickable(onClick=onCancel).padding(8.dp),color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+        Text("< CANCEL / ESC",Modifier.clickable(onClick=onCancel).padding(8.dp),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
     }
 }
 @Composable private fun AccessDeniedGestureScreen(onRecognized:()->Unit) {
@@ -485,11 +485,11 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
                 TerminalLine("> SOURCE IP NOT IN TRUST DATABASE")
                 TerminalLine("> SESSION STATE: LOCKED",TerminalAmber)
                 Spacer(Modifier.height(8.dp))
-                Text(tr("This IP address is not authorized."),color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace)
+                Text(tr("This IP address is not authorized."),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
             }
             Spacer(Modifier.height(18.dp))
-            Text("SYSTEM IS LISTENING...",color=Green,fontSize=9.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
-            Text("HIDDEN RECOVERY GESTURE ENABLED",color=Muted,fontSize=8.sp,fontFamily=FontFamily.Monospace)
+            Text("SYSTEM IS LISTENING...",color=Green,fontSize=17.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+            Text("HIDDEN RECOVERY GESTURE ENABLED",color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
         }
     }
 }
