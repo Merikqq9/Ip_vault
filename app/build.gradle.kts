@@ -1,5 +1,6 @@
 import java.net.URL
 import java.util.zip.ZipInputStream
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -80,7 +81,7 @@ val installLauncherIcon by tasks.registering {
     doLast {
         val target = output.get().asFile
         target.parentFile.mkdirs()
-        target.writeBytes(java.util.Base64.getDecoder().decode(source.asFile.readText().trim()))
+        target.writeBytes(Base64.getDecoder().decode(source.asFile.readText().trim()))
     }
 }
 android.sourceSets.getByName("main").res.srcDir(monocraftResDir)
