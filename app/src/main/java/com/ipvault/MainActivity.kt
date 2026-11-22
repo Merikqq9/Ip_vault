@@ -33,6 +33,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.ipvault.security.VaultCrypto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
@@ -50,10 +51,10 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 @Composable private fun IpVaultApp(){
  val context=androidx.compose.ui.platform.LocalContext.current;val scope=rememberCoroutineScope()
  val prefs by context.vaultStore.data.collectAsState(initial=androidx.datastore.preferences.core.emptyPreferences())
- val whitelist=prefs[AllowedIps]?:emptySet();val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
+ var savedWhitelist by remember { mutableStateOf<Set<String>?>(null) };val whitelist=savedWhitelist ?: (prefs[AllowedIps]?:emptySet());val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
  var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)}
  var page by remember{mutableStateOf("home")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
- LaunchedEffect(Unit){ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};checking=false;firstRun=whitelist.isEmpty();if(!firstRun&&(ip==null||ip !in whitelist))(context as? ComponentActivity)?.finish()}
+ LaunchedEffect(Unit){val stored=withContext(Dispatchers.IO){context.vaultStore.data.first()[AllowedIps]?:emptySet()};savedWhitelist=stored;ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};firstRun=stored.isEmpty();checking=false;if(stored.isNotEmpty()&&(ip==null||ip !in stored))(context as? ComponentActivity)?.finish()}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)scope.launch{try{
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
   context.vaultStore.edit{it[VaultItems]=(it[VaultItems]?:emptySet())+item.encode()};message="FILE ENCRYPTED AND SAVED"
@@ -61,9 +62,9 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  MaterialTheme(colorScheme=darkColorScheme(primary=Green,background=Black,surface=Color(0xFF0D140F),onSurface=Color.White)){Surface(Modifier.fillMaxSize(),color=Black){
  when{
  checking->CenterStatus("IP VAULT","CHECKING NETWORK")
- firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};firstRun=false}}
+ firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false}}
  ip==null||ip !in whitelist->CenterStatus("ACCESS DENIED","CLOSING")
- page=="settings"->WhitelistScreen(whitelist,ip,{page="home"},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist+v}}},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist-v}}})
+ page=="settings"->WhitelistScreen(whitelist,ip,{page="home"},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist+v};savedWhitelist=whitelist+v}},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist-v};savedWhitelist=whitelist-v}})
  page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val out=File(context.cacheDir,"preview_"+item.id.substringBefore('.'));out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).setDataAndType(uri,item.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),"Open with"))}catch(e:Exception){message="OPEN ERROR: "+(e.localizedMessage?:"unknown")}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
  else->ip?.let { currentIp -> HomeScreen(currentIp,{page="settings"},{page="files";filter="ALL"},{page="files";filter="IMAGE"},{page="files";filter="VIDEO"},{page="files";filter="AUDIO"},{page="files";filter="OTHER"}) } ?: CenterStatus("IP VAULT","CHECKING NETWORK")
  }
