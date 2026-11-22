@@ -252,8 +252,8 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
 }
 @Composable private fun TerminalMenuRow(label:String,index:String,detail:String="",onClick:()->Unit){
  Column(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=3.dp)){
-  Row(verticalAlignment=Alignment.CenterVertically){Text("├─ ["+index+"]",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(8.dp));Text(label.uppercase(),color=Color(0xFFD8F5DF),fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("▶",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)}
-  if(detail.isNotEmpty())Text("│     "+detail,color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
+  Row(verticalAlignment=Alignment.CenterVertically){Text("├─ ["+index+"]",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.width(8.dp));Text(keepParentheticalTogether(label.uppercase()),color=Color(0xFFD8F5DF),fontSize=14.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("▶",color=Green,fontSize=14.sp,fontFamily=FontFamily.Monospace)}
+  if(detail.isNotEmpty())Text("│     "+keepParentheticalTogether(detail),color=Muted,fontSize=14.sp,fontFamily=FontFamily.Monospace)
  }
 }
 @Composable private fun TerminalField(value:String,onValueChange:(String)->Unit,label:String,password:Boolean=false,keyboardOptions:KeyboardOptions=KeyboardOptions.Default){
@@ -280,8 +280,16 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
         TerminalFooter()
     }
 }
+private fun keepParentheticalTogether(value:String):String {
+    val start=value.indexOf('(')
+    val end=if(start>=0)value.indexOf(')',start+1) else -1
+    if(start<0||end<0)return value.replace(" (","\u00A0(")
+    val inside=value.substring(start,end+1).replace(" ","\u00A0")
+    return value.substring(0,start).replace(Regex(" +$"),"\u00A0")+inside+value.substring(end+1)
+}
+
 @Composable private fun TerminalLine(value:String,color:Color=Color.White) {
-    Text(value,color=color,fontSize=17.sp,fontFamily=FontFamily.Monospace,softWrap=true)
+    Text(keepParentheticalTogether(value),color=color,fontSize=17.sp,fontFamily=FontFamily.Monospace,softWrap=true)
 }
 @Composable private fun CenterStatus(t:String,d:String) {
     Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.Start,verticalArrangement=Arrangement.Center) {
