@@ -537,17 +537,79 @@ private fun WhitelistScreen(
 }
 @Composable private fun EmergencyPasswordEntryScreen(onCancel:()->Unit,onUnlock:(String)->Unit){
     var password by remember{mutableStateOf("")}
-    Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
+    var textMode by remember{mutableStateOf(false)}
+    Column(
+        Modifier.fillMaxSize().padding(horizontal=28.dp, vertical=24.dp),
+        horizontalAlignment=Alignment.CenterHorizontally,
+        verticalArrangement=Arrangement.Center
+    ){
         Text("EMERGENCY ACCESS",color=Green,fontSize=23.sp,fontFamily=VaultFont)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
         Text(tr("Enter your backup password to unlock IP VAULT."),color=Muted)
+        Spacer(Modifier.height(22.dp))
+        Text(if(password.isEmpty()) "ENTER PASSWORD" else "• ".repeat(password.length).trim(),
+            color=Green,fontSize=if(password.isEmpty())10.sp else 22.sp,fontFamily=VaultFont,
+            letterSpacing=if(password.isEmpty())2.sp else 3.sp)
         Spacer(Modifier.height(18.dp))
-        OutlinedTextField(password,{password=it},label={Text("Backup password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
-        Spacer(Modifier.height(16.dp))
-        Row(verticalAlignment=Alignment.CenterVertically){
+        if(textMode){
+            OutlinedTextField(
+                value=password,onValueChange={password=it},
+                modifier=Modifier.fillMaxWidth(),
+                label={Text("Backup password")},singleLine=true,
+                visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors()
+            )
+        }else{
+            val rows=listOf(listOf("1","2","3"),listOf("4","5","6"),listOf("7","8","9"))
+            Column(Modifier.fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(10.dp)){
+                rows.forEach{row->
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                        row.forEach{digit->
+                            Button(
+                                onClick={if(password.length<128)password+=digit},
+                                modifier=Modifier.weight(1f).height(62.dp),
+                                shape=androidx.compose.foundation.shape.CircleShape,
+                                colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF101B14),contentColor=Green),
+                                border=BorderStroke(1.dp,Green.copy(alpha=.55f)),
+                                elevation=ButtonDefaults.buttonElevation(defaultElevation=3.dp,pressedElevation=0.dp)
+                            ){Text(digit,fontFamily=VaultFont,fontSize=22.sp)}
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                    OutlinedButton(
+                        onClick={textMode=true},
+                        modifier=Modifier.weight(1f).height(62.dp),
+                        shape=androidx.compose.foundation.shape.CircleShape,
+                        border=BorderStroke(1.dp,Muted.copy(alpha=.55f))
+                    ){Text("ABC",fontFamily=VaultFont,color=Muted,fontSize=13.sp)}
+                    Button(
+                        onClick={if(password.length<128)password+="0"},
+                        modifier=Modifier.weight(1f).height(62.dp),
+                        shape=androidx.compose.foundation.shape.CircleShape,
+                        colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF101B14),contentColor=Green),
+                        border=BorderStroke(1.dp,Green.copy(alpha=.55f)),
+                        elevation=ButtonDefaults.buttonElevation(defaultElevation=3.dp,pressedElevation=0.dp)
+                    ){Text("0",fontFamily=VaultFont,fontSize=22.sp)}
+                    OutlinedButton(
+                        onClick={if(password.isNotEmpty())password=password.dropLast(1)},
+                        modifier=Modifier.weight(1f).height(62.dp),
+                        shape=androidx.compose.foundation.shape.CircleShape,
+                        border=BorderStroke(1.dp,Muted.copy(alpha=.55f))
+                    ){Text("⌫",fontFamily=VaultFont,color=Muted,fontSize=20.sp)}
+                }
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
             TextButton(onClick=onCancel){Text(tr("CANCEL"),color=Muted)}
-            Spacer(Modifier.width(12.dp))
-            Button(onClick={onUnlock(password)},enabled=password.isNotEmpty(),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("UNLOCK"))}
+            if(textMode)TextButton(onClick={textMode=false}){Text("123",color=Green,fontFamily=VaultFont)}
+            Button(
+                onClick={onUnlock(password)},enabled=password.isNotEmpty(),
+                colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),
+                shape=RoundedCornerShape(10.dp),
+                border=BorderStroke(1.dp,Green.copy(alpha=.45f)),
+                elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)
+            ){Text(tr("UNLOCK"))}
         }
     }
 }
