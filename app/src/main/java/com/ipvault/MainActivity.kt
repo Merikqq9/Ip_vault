@@ -521,18 +521,88 @@ private fun WhitelistScreen(
 @Composable private fun EmergencyPasswordSetupScreen(onSave:(String)->Unit){
     var password by remember{mutableStateOf("")}
     var confirm by remember{mutableStateOf("")}
-    Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){
+    var activeField by remember{mutableStateOf("password")}
+    var textMode by remember{mutableStateOf(false)}
+    fun appendDigit(digit:String){
+        if(activeField=="password"&&password.length<128)password+=digit
+        else if(activeField=="confirm"&&confirm.length<128)confirm+=digit
+    }
+    fun eraseDigit(){
+        if(activeField=="password"&&password.isNotEmpty())password=password.dropLast(1)
+        else if(activeField=="confirm"&&confirm.isNotEmpty())confirm=confirm.dropLast(1)
+    }
+    Column(
+        Modifier.fillMaxSize().padding(horizontal=24.dp,vertical=18.dp),
+        horizontalAlignment=Alignment.CenterHorizontally,
+        verticalArrangement=Arrangement.Center
+    ){
         Text(tr("EMERGENCY ACCESS"),color=Green,fontSize=23.sp,fontFamily=VaultFont)
+        Spacer(Modifier.height(8.dp))
+        Text(tr("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist."),
+            color=Muted,fontSize=11.sp)
+        Spacer(Modifier.height(14.dp))
+        if(textMode){
+            OutlinedTextField(password,{password=it},modifier=Modifier.fillMaxWidth(),
+                label={Text(tr("Backup password"))},singleLine=true,
+                visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(confirm,{confirm=it},modifier=Modifier.fillMaxWidth(),
+                label={Text(tr("Repeat new password"))},singleLine=true,
+                visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+            TextButton(onClick={textMode=false}){Text("123",color=Green,fontFamily=VaultFont)}
+        }else{
+            OutlinedTextField(
+                value=if(activeField=="password")"• ".repeat(password.length).trim() else "",
+                onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth().clickable{activeField="password"},
+                label={Text(tr("Backup password"))},singleLine=true,colors=vaultFieldColors(),
+                textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+            )
+            Spacer(Modifier.height(7.dp))
+            OutlinedTextField(
+                value=if(activeField=="confirm")"• ".repeat(confirm.length).trim() else "",
+                onValueChange={},readOnly=true,modifier=Modifier.fillMaxWidth().clickable{activeField="confirm"},
+                label={Text(tr("Repeat new password"))},singleLine=true,colors=vaultFieldColors(),
+                textStyle=TextStyle(fontFamily=VaultFont,color=Green,letterSpacing=2.sp)
+            )
+            Spacer(Modifier.height(12.dp))
+            val keypadRows=listOf(listOf("1","2","3"),listOf("4","5","6"),listOf("7","8","9"))
+            Column(Modifier.fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(7.dp)){
+                keypadRows.forEach{row->
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                        row.forEach{digit->
+                            Button(onClick={appendDigit(digit)},modifier=Modifier.weight(1f).height(48.dp),
+                                shape=androidx.compose.foundation.shape.CircleShape,
+                                colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF101B14),contentColor=Green),
+                                border=BorderStroke(1.dp,Green.copy(alpha=.55f)),
+                                elevation=ButtonDefaults.buttonElevation(defaultElevation=3.dp,pressedElevation=0.dp)
+                            ){Text(digit,fontFamily=VaultFont,fontSize=19.sp)}
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                    OutlinedButton(onClick={textMode=true},modifier=Modifier.weight(1f).height(48.dp),
+                        shape=androidx.compose.foundation.shape.CircleShape,border=BorderStroke(1.dp,Muted.copy(alpha=.55f))
+                    ){Text("ABC",fontFamily=VaultFont,color=Muted,fontSize=12.sp)}
+                    Button(onClick={appendDigit("0")},modifier=Modifier.weight(1f).height(48.dp),
+                        shape=androidx.compose.foundation.shape.CircleShape,
+                        colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF101B14),contentColor=Green),
+                        border=BorderStroke(1.dp,Green.copy(alpha=.55f))
+                    ){Text("0",fontFamily=VaultFont,fontSize=19.sp)}
+                    OutlinedButton(onClick={eraseDigit},modifier=Modifier.weight(1f).height(48.dp),
+                        shape=androidx.compose.foundation.shape.CircleShape,border=BorderStroke(1.dp,Muted.copy(alpha=.55f))
+                    ){Text("⌫",fontFamily=VaultFont,color=Muted,fontSize=18.sp)}
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
-        Text(tr("Create a backup password. You will use it when connecting from an IP address that is not on your whitelist."),color=Muted)
-        Spacer(Modifier.height(18.dp))
-        OutlinedTextField(password,{password=it},label={Text(tr("Backup password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
+        if(password.isNotEmpty()&&password.length<8)Text(tr("Use at least 8 characters."),color=Muted,fontSize=10.sp)
+        if(confirm.isNotEmpty()&&password!=confirm)Text(tr("Passwords do not match."),color=Muted,fontSize=10.sp)
         Spacer(Modifier.height(10.dp))
-        OutlinedTextField(confirm,{confirm=it},label={Text(tr("Repeat new password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
-        Spacer(Modifier.height(16.dp))
-        Button(onClick={onSave(password)},enabled=password.length>=8&&password==confirm,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("SAVE BACKUP PASSWORD"))}
-        if(password.isNotEmpty()&&password.length<8)Text(tr("Use at least 8 characters."),color=Muted,fontSize=11.sp)
-        if(confirm.isNotEmpty()&&password!=confirm)Text(tr("Passwords do not match."),color=Muted,fontSize=11.sp)
+        Button(onClick={onSave(password)},enabled=password.length>=8&&password==confirm,
+            colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),
+            shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),
+            elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)
+        ){Text(tr("SAVE BACKUP PASSWORD"))}
     }
 }
 @Composable private fun EmergencyPasswordEntryScreen(onCancel:()->Unit,onUnlock:(String)->Unit){
