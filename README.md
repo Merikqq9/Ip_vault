@@ -45,31 +45,11 @@
 | Preferences DataStore | Локальные настройки |
 | GitHub Actions | Автоматическая сборка APK |
 
-## 📲 Установка
+## 📥 Скачать приложение
 
-Готовые debug-сборки публикуются как артефакты GitHub Actions:
+Хотите попробовать IP VAULT? Откройте раздел **Releases** внизу страницы репозитория, выберите последнюю версию и скачайте APK из списка файлов релиза.
 
-1. Откройте [последние запуски сборки](https://github.com/Merikqq9/Ip_vault/actions/workflows/android.yml).
-2. Выберите завершённый запуск со статусом **Success**.
-3. Внизу страницы найдите раздел **Artifacts** и скачайте APK.
-4. Установите APK на Android-устройство. При необходимости разрешите установку приложений из выбранного источника.
-
-## 🧱 Сборка проекта
-
-**Требования:** Android Studio, JDK 17 и Android SDK 35.
-
-```bash
-git clone https://github.com/Merikqq9/Ip_vault.git
-cd Ip_vault
-```
-
-Откройте проект в Android Studio и дождитесь синхронизации Gradle. Для локальной debug-сборки:
-
-```bash
-./gradlew assembleDebug
-```
-
-APK появится в `app/build/outputs/apk/debug/`.
+[**Перейти к релизам и скачать IP VAULT →**](https://github.com/Merikqq9/Ip_vault/releases)
 
 ## 🔐 Важное замечание о безопасности
 
