@@ -588,7 +588,7 @@ private fun WhitelistScreen(
                         colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF101B14),contentColor=Green),
                         border=BorderStroke(1.dp,Green.copy(alpha=.55f))
                     ){Text("0",fontFamily=VaultFont,fontSize=19.sp)}
-                    OutlinedButton(onClick={eraseDigit},modifier=Modifier.weight(1f).height(48.dp),
+                    OutlinedButton(onClick={eraseDigit()},modifier=Modifier.weight(1f).height(48.dp),
                         shape=androidx.compose.foundation.shape.CircleShape,border=BorderStroke(1.dp,Muted.copy(alpha=.55f))
                     ){Text("⌫",fontFamily=VaultFont,color=Muted,fontSize=18.sp)}
                 }
