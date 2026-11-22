@@ -3,6 +3,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.os.StatFs
 import android.provider.OpenableColumns
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -12,7 +14,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
@@ -30,6 +35,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,6 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import java.io.File
 import java.net.URL
 import java.util.UUID
@@ -116,7 +124,10 @@ private val RussianTranslations = mapOf(
     "TOO MANY ATTEMPTS. TRY AGAIN IN " to "СЛИШКОМ МНОГО ПОПЫТОК. ПОВТОРИТЕ ЧЕРЕЗ ",
     " SECONDS" to " СЕК.",
     "INCORRECT PASSWORD. ATTEMPT " to "НЕВЕРНЫЙ ПАРОЛЬ. ПОПЫТКА ",
-    " OF 5" to " ИЗ 5"
+    " OF 5" to " ИЗ 5",
+    "WELCOME TO IP VAULT" to "ДОБРО ПОЖАЛОВАТЬ В IP VAULT",
+    "DEVICE STORAGE" to "ПАМЯТЬ УСТРОЙСТВА",
+    "FREE" to "СВОБОДНО"
 )
 private fun tr(value:String):String =
     if (activeVaultLanguage == "ru") RussianTranslations[value] ?: value else value
@@ -155,7 +166,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  val prefs by context.vaultStore.data.collectAsState(initial=androidx.datastore.preferences.core.emptyPreferences())
  var savedWhitelist by remember { mutableStateOf<Set<String>?>(null) };val whitelist=savedWhitelist ?: (prefs[AllowedIps]?:emptySet());val items=(prefs[VaultItems]?:emptySet()).mapNotNull(VaultItem::decode).sortedBy{it.name.lowercase()}
  var ip by remember{mutableStateOf<String?>(null)};var checking by remember{mutableStateOf(true)};var firstRun by remember{mutableStateOf(false)};var setupEmergency by rememberSaveable{mutableStateOf(false)};var emergencyUnlocked by rememberSaveable{mutableStateOf(false)};var showEmergencyPassword by rememberSaveable{mutableStateOf(false)}
- var page by rememberSaveable{mutableStateOf("home")};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
+ var page by rememberSaveable{mutableStateOf("home")};var welcomeDone by rememberSaveable{mutableStateOf(false)};var language by rememberSaveable{mutableStateOf("en")};var filter by remember{mutableStateOf("ALL")};var message by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(Unit){val storedPrefs=withContext(Dispatchers.IO){context.vaultStore.data.first()};val stored=storedPrefs[AllowedIps]?:emptySet();language=storedPrefs[LanguageKey]?: "en";activeVaultLanguage=language;savedWhitelist=stored;ip=withContext(Dispatchers.IO){try{val c=URL("https://api.ipify.org").openConnection() as HttpsURLConnection;c.connectTimeout=5000;c.readTimeout=5000;c.inputStream.bufferedReader().use{it.readText().trim()}.also{c.disconnect()}}catch(_:Exception){null}};firstRun=stored.isEmpty();setupEmergency=stored.isNotEmpty()&&storedPrefs[EmergencyHash]==null;checking=false}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)scope.launch{try{
   val item=withContext(Dispatchers.IO){val name=context.contentResolver.query(uri,null,null,null,null)?.use{c->val i=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(c.moveToFirst()&&i>=0)c.getString(i)else null}?: "file";val mime=context.contentResolver.getType(uri)?:"application/octet-stream";val id=UUID.randomUUID().toString()+".vault";val input=context.contentResolver.openInputStream(uri)?:error("Cannot read file");VaultCrypto(context).encrypt(input,id);VaultItem(id,name,mime)}
@@ -165,7 +176,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  when{
  checking->CenterStatus("IP VAULT",tr("CHECKING NETWORK"))
  firstRun->InitialTrustScreen(ip){v->scope.launch{context.vaultStore.edit{it[AllowedIps]=setOf(v)};savedWhitelist=setOf(v);firstRun=false;setupEmergency=true}}
- setupEmergency&&ip!=null&&ip in whitelist->EmergencyPasswordSetupScreen{password->scope.launch{val record=withContext(Dispatchers.Default){createEmergencyRecord(password)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};setupEmergency=false}}
+ setupEmergency&&ip!=null&&ip in whitelist->EmergencyPasswordSetupScreen{password->scope.launch{val record=withContext(Dispatchers.Default){createEmergencyRecord(password)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};setupEmergency=false}}\n !welcomeDone&&!checking&&!firstRun&&!setupEmergency&&((ip!=null&&ip in whitelist)||emergencyUnlocked)->WelcomeScreen{welcomeDone=true}
  (ip==null||ip !in whitelist)&&!emergencyUnlocked->if(showEmergencyPassword)EmergencyPasswordEntryScreen(onCancel={showEmergencyPassword=false}){password->scope.launch{val p=context.vaultStore.data.first();val now=System.currentTimeMillis();val lockedUntil=p[EmergencyLockUntil]?:0L;if(now<lockedUntil){message=tr("TOO MANY ATTEMPTS. TRY AGAIN IN ")+((lockedUntil-now+999)/1000)+tr(" SECONDS")}else{val valid=withContext(Dispatchers.Default){checkEmergencyPassword(password,p[EmergencySalt],p[EmergencyHash])};if(valid){context.vaultStore.edit{it[EmergencyFailures]=0;it[EmergencyLockUntil]=0L};emergencyUnlocked=true;showEmergencyPassword=false;page="home"}else{val failures=(p[EmergencyFailures]?:0)+1;context.vaultStore.edit{it[EmergencyFailures]=if(failures>=5)0 else failures;if(failures>=5)it[EmergencyLockUntil]=now+60000L};message=if(failures>=5)tr("TOO MANY ATTEMPTS. LOCKED FOR 60 SECONDS") else tr("INCORRECT PASSWORD. ATTEMPT ")+failures+tr(" OF 5")}}}}else AccessDeniedGestureScreen{showEmergencyPassword=true}
  page=="settings"->WhitelistScreen(whitelist,ip,language,{selected->language=selected;activeVaultLanguage=selected;scope.launch{context.vaultStore.edit{it[LanguageKey]=selected}}},{page="home"},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist+v};savedWhitelist=whitelist+v}},{v->scope.launch{context.vaultStore.edit{it[AllowedIps]=whitelist-v};savedWhitelist=whitelist-v}},{old,new->scope.launch{val p=context.vaultStore.data.first();val valid=withContext(Dispatchers.Default){checkEmergencyPassword(old,p[EmergencySalt],p[EmergencyHash])};if(valid){val record=withContext(Dispatchers.Default){createEmergencyRecord(new)};context.vaultStore.edit{it[EmergencySalt]=record.first;it[EmergencyHash]=record.second};message=tr("EMERGENCY PASSWORD UPDATED")}else message=tr("INCORRECT CURRENT PASSWORD")}})
  page=="files"->FilesScreen(items,filter,{filter=it},{page="home"},{picker.launch(arrayOf("*/*"))},{item->scope.launch{try{val temp=withContext(Dispatchers.IO){val safeName=item.name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"),"_").ifBlank{"file"};val out=File(context.cacheDir,"open_"+UUID.randomUUID().toString()+"_"+safeName);out.outputStream().use{VaultCrypto(context).decrypt(File(File(context.filesDir,"vault_encrypted"),item.id),it)};out};val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",temp);val resolvedMime=if(item.mime.isNotBlank()&&item.mime!="application/octet-stream")item.mime else android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(item.name.substringAfterLast('.', "").lowercase()) ?: if(item.mime.startsWith("audio/"))"audio/*" else "*/*";val viewIntent=Intent(Intent.ACTION_VIEW).setDataAndType(uri,resolvedMime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);viewIntent.clipData=android.content.ClipData.newUri(context.contentResolver,item.name,uri);context.startActivity(Intent.createChooser(viewIntent,"Open with"))}catch(e:Exception){message=tr("OPEN ERROR: ")+(e.localizedMessage?:tr("No app can open this file"))}}},{item->scope.launch{context.vaultStore.edit{p->p[VaultItems]=(p[VaultItems]?:emptySet()).filterNot{VaultItem.decode(it)?.id==item.id}.toSet()};withContext(Dispatchers.IO){File(File(context.filesDir,"vault_encrypted"),item.id).delete()}}})
@@ -175,10 +186,78 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  }}
 }
 
+
+@Composable private fun WelcomeScreen(onFinished:()->Unit){
+    val greeting=tr("WELCOME TO IP VAULT")
+    var visibleCount by remember { mutableStateOf(0) }
+    LaunchedEffect(greeting){
+        delay(250)
+        for(i in 1..greeting.length){visibleCount=i;delay(42)}
+        delay(850)
+        for(i in greeting.length downTo 0){visibleCount=i;delay(24)}
+        delay(180)
+        onFinished()
+    }
+    Box(Modifier.fillMaxSize().background(Black),contentAlignment=Alignment.Center){
+        Column(horizontalAlignment=Alignment.CenterHorizontally){
+            Text(greeting.take(visibleCount),color=Green,fontSize=22.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.Medium,letterSpacing=0.5.sp)
+            Spacer(Modifier.height(12.dp))
+            Text("IP VAULT  •  SECURE LOCAL STORAGE",color=Muted,fontSize=10.sp,fontFamily=FontFamily.Monospace,letterSpacing=1.sp)
+        }
+    }
+}
+@Composable private fun AsciiEarth(){
+    var frame by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit){while(true){frame=(frame+1)%32;delay(115)}}
+    Text(text=asciiEarthFrame(frame*0.19634954f),color=Green,fontFamily=FontFamily.Monospace,fontSize=7.sp,lineHeight=7.sp)
+}
+private fun asciiEarthFrame(rotation:Float):String{
+    val rows=13;val cols=25
+    return buildString {
+        for(y in 0 until rows){
+            for(x in 0 until cols){
+                val nx=(x-(cols-1)/2f)/11.2f
+                val ny=(y-(rows-1)/2f)/5.7f
+                val radius=nx*nx+ny*ny
+                if(radius>1f){append(' ');continue}
+                val nz=kotlin.math.sqrt(1f-radius)
+                val lon=kotlin.math.atan2(nx,nz)+rotation
+                val lat=kotlin.math.asin(ny)
+                val land=(kotlin.math.sin(lon*2.1f+lat*1.4f)+kotlin.math.cos(lon*3.3f-lat*2.2f)+kotlin.math.sin(lon*4.7f+lat*3.1f))*0.34f
+                val ch=if(land>0.28f) "@%#"[(x+y+kotlin.math.abs((rotation*5).toInt()))%3] else if(nz<0.25f) '.' else " .:-=+"[((x*3+y*5)%6)]
+                append(ch)
+            }
+            if(y<rows-1)append('\n')
+        }
+    }
+}
+@Composable private fun DeviceStorageBadge(){
+    val stats=remember { runCatching { StatFs(Environment.getDataDirectory().absolutePath) }.getOrNull() }
+    val total=stats?.totalBytes?:0L
+    val free=stats?.availableBytes?:0L
+    val used=(total-free).coerceAtLeast(0L)
+    val fraction=if(total>0L)used.toFloat()/total.toFloat() else 0f
+    fun format(bytes:Long):String{
+        val gb=bytes/(1024.0*1024.0*1024.0)
+        return if(gb>=10) "%.0f GB".format(java.util.Locale.US,gb) else "%.1f GB".format(java.util.Locale.US,gb)
+    }
+    Column(Modifier.width(142.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF0D140F)).border(1.dp,Color(0xFF203629),RoundedCornerShape(10.dp)).padding(10.dp)){
+        Text(tr("DEVICE STORAGE"),color=Muted,fontSize=8.sp,letterSpacing=1.sp)
+        Spacer(Modifier.height(5.dp))
+        Text("${format(used)} / ${format(total)}",color=Color.White,fontSize=11.sp,fontFamily=FontFamily.Monospace)
+        Spacer(Modifier.height(6.dp))
+        Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF26352B))){
+            Box(Modifier.fillMaxWidth(fraction.coerceIn(0f,1f)).fillMaxHeight().background(Green))
+        }
+        Spacer(Modifier.height(5.dp))
+        Text("${tr("FREE")}: ${format(free)}",color=Muted,fontSize=9.sp)
+    }
+}
+
 @Composable private fun CenterStatus(t:String,d:String){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(t,color=Green,fontSize=24.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(d,color=Muted,fontSize=10.sp,letterSpacing=2.sp)}}
-@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
+@Composable private fun InitialTrustScreen(ip:String?,onTrust:(String)->Unit){var value by remember(ip){mutableStateOf(ip.orEmpty())};Column(Modifier.fillMaxSize().padding(26.dp),verticalArrangement=Arrangement.Center){Text("IP VAULT",color=Green,fontSize=27.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(8.dp));Text(tr("INITIAL TRUST SETUP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(28.dp));Text(tr("Add your current public IP to initialize the global whitelist."),color=Color.White);Spacer(Modifier.height(16.dp));OutlinedTextField(value,{value=it},label={Text(tr("Public IP address"))},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),colors=vaultFieldColors());Spacer(Modifier.height(16.dp));Button(onClick={onTrust(value.trim())},enabled=value.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("TRUST THIS IP"))};if(ip==null)Text("Network unavailable. Connect and restart.",color=Muted,modifier=Modifier.padding(top=14.dp))}}
 @Composable private fun HomeScreen(ip:String,settings:()->Unit,all:()->Unit,images:()->Unit,videos:()->Unit,audio:()->Unit,other:()->Unit){Column(Modifier.fillMaxSize().padding(start=24.dp,end=24.dp,top=52.dp,bottom=28.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text("IP VAULT",color=Green,fontSize=23.sp,fontFamily=FontFamily.Monospace,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));IconButton(onClick=settings){Icon(Icons.Outlined.Settings,null,tint=Green)}};Spacer(Modifier.height(32.dp));Text(tr("CONNECTION"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text(tr("AUTHORIZED"),color=Green,fontSize=13.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(14.dp));Text(tr("PUBLIC IP"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);Text(ip,color=Color.White,fontSize=17.sp,fontFamily=FontFamily.Monospace);Spacer(Modifier.height(30.dp));Text(tr("MY VAULT"),color=Muted,fontSize=10.sp,letterSpacing=2.sp);VaultMenuRow(tr("ALL FILES"),Icons.Outlined.Folder,all);VaultMenuRow(tr("PHOTOS"),Icons.Outlined.Image,images);VaultMenuRow(tr("VIDEO"),Icons.Outlined.Videocam,videos);VaultMenuRow(tr("AUDIO"),Icons.Outlined.Headphones,audio);VaultMenuRow(tr("DOCUMENTS & OTHER"),Icons.Outlined.Description,other)}}
-@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=click).padding(vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=Green);Spacer(Modifier.width(14.dp));Text(label,color=Color.White,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=Muted)};HorizontalDivider(color=Color(0xFF17231B))}
+@Composable private fun VaultMenuRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,click:()->Unit){Row(Modifier.fillMaxWidth().padding(vertical=5.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF0D140F)).border(1.dp,Color(0xFF203629),RoundedCornerShape(12.dp)).clickable(onClick=click).padding(horizontal=14.dp,vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=Green);Spacer(Modifier.width(14.dp));Text(label,color=Color.White,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=Muted)}}
 @Composable private fun FilesScreen(items:List<VaultItem>,filter:String,setFilter:(String)->Unit,back:()->Unit,add:()->Unit,open:(VaultItem)->Unit,delete:(VaultItem)->Unit){
     BackHandler(onBack=back)
     val shown=items.filter{when(filter){"IMAGE"->it.mime.startsWith("image/");"VIDEO"->it.mime.startsWith("video/");"AUDIO"->it.mime.startsWith("audio/");"OTHER"->!(it.mime.startsWith("image/")||it.mime.startsWith("video/")||it.mime.startsWith("audio/"));else->true}}
@@ -190,6 +269,8 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
             Spacer(Modifier.weight(1f))
             IconButton(onClick=add){Icon(Icons.Outlined.Add,null,tint=Green)}
         }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){AsciiEarth();DeviceStorageBadge()}
         Spacer(Modifier.height(12.dp))
         if(shown.isEmpty())Text(tr("NO FILES"),color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=12.dp))
         LazyColumn{items(shown,key={it.id}){item->
@@ -249,7 +330,7 @@ private fun WhitelistScreen(
                 Spacer(Modifier.height(16.dp))
                 Button(onClick={changePassword(oldPassword,newPassword);oldPassword="";newPassword="";confirmPassword=""},
                     enabled=oldPassword.isNotEmpty()&&newPassword.length>=8&&newPassword==confirmPassword,
-                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("UPDATE PASSWORD"))}
+                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("UPDATE PASSWORD"))}
             }
             "language" -> {
                 Text(tr("LANGUAGE"), color=Muted, fontSize=10.sp, letterSpacing=2.sp)
@@ -263,7 +344,7 @@ private fun WhitelistScreen(
                 OutlinedTextField(value=entry,onValueChange={entry=it},modifier=Modifier.fillMaxWidth(),label={Text(tr("IPv4 / IPv6"))},singleLine=true,colors=vaultFieldColors())
                 Spacer(Modifier.height(8.dp))
                 Button(onClick={add(entry.trim());entry=""},enabled=entry.trim().matches(Regex("^[0-9a-fA-F:.]{3,45}$")),
-                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("ADD IP"))}
+                    colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("ADD IP"))}
                 Spacer(Modifier.height(18.dp))
                 LazyColumn(Modifier.weight(1f)) {
                     items(ips.sorted()) { address ->
@@ -295,7 +376,7 @@ private fun WhitelistScreen(
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(confirm,{confirm=it},label={Text(tr("Repeat new password"))},singleLine=true,visualTransformation=PasswordVisualTransformation(),colors=vaultFieldColors())
         Spacer(Modifier.height(16.dp))
-        Button(onClick={onSave(password)},enabled=password.length>=8&&password==confirm,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("SAVE BACKUP PASSWORD"))}
+        Button(onClick={onSave(password)},enabled=password.length>=8&&password==confirm,colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("SAVE BACKUP PASSWORD"))}
         if(password.isNotEmpty()&&password.length<8)Text(tr("Use at least 8 characters."),color=Muted,fontSize=11.sp)
         if(confirm.isNotEmpty()&&password!=confirm)Text(tr("Passwords do not match."),color=Muted,fontSize=11.sp)
     }
@@ -312,7 +393,7 @@ private fun WhitelistScreen(
         Row(verticalAlignment=Alignment.CenterVertically){
             TextButton(onClick=onCancel){Text(tr("CANCEL"),color=Muted)}
             Spacer(Modifier.width(12.dp))
-            Button(onClick={onUnlock(password)},enabled=password.isNotEmpty(),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black)){Text(tr("UNLOCK"))}
+            Button(onClick={onUnlock(password)},enabled=password.isNotEmpty(),colors=ButtonDefaults.buttonColors(containerColor=Green,contentColor=Black),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Green.copy(alpha=.45f)),elevation=ButtonDefaults.buttonElevation(defaultElevation=4.dp,pressedElevation=1.dp)){Text(tr("UNLOCK"))}
         }
     }
 }
